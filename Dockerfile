@@ -11,4 +11,4 @@ USER app
 COPY --chown=app:app pyproject.toml README.md ./
 COPY --chown=app:app src/ ./src/
 RUN python -m ensurepip
-RUN python -m pip install --upgrade --no-cache-dir .
+RUN python -m pip install --upgrade --no-cache-dir .[pam]
