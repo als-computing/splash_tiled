@@ -48,11 +48,6 @@ tiled_client = [
   "tiled[client]"
 ]
 
-
-pam = [
-    "pamela"
-]
-
 [project.urls]
 Homepage = "https://github.com/als-lbl/als_tiled"
 Repository = "https://github.com/als-lbl/als_tiled"

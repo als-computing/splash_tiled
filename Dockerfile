@@ -11,11 +11,11 @@ USER root
     #   - /etc/pam_radius_auth.conf:/etc/pam_radius_auth.conf:ro
 
 # libpam0g-dev is required for pamela (PAM authentication)
-RUN apt-get update && apt-get install -y libpam0g-dev libpam-radius-auth && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && rm -rf /var/lib/apt/lists/*
 
 USER app
 
 COPY --chown=app:app pyproject.toml README.md ./
 COPY --chown=app:app src/ ./src/
 RUN python -m ensurepip
-RUN python -m pip install --upgrade --no-cache-dir .[pam]
+RUN python -m pip install --upgrade --no-cache-dir .
