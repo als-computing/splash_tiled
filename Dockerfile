@@ -4,7 +4,8 @@ USER root
 
 # git is used only for the pip install git+https:// below and can be
 # removed once that is no longer used.
-RUN apt-get update && apt-get install -y postgresql-client git && rm -rf /var/lib/apt/lists/*
+# libpam0g-dev is required for pamela (PAM authentication)
+RUN apt-get update && apt-get install -y libpam0g-dev && rm -rf /var/lib/apt/lists/*
 
 USER app
 
