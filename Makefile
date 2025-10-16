@@ -45,7 +45,7 @@ build:
 	python -m build
 
 docker-build:
-	docker build -t als_tiled .
+	docker build -t als_tiled -f Containerfile .
 
 docker-run:
 	docker run -p 8000:8000 als_tiled
