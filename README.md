@@ -20,7 +20,7 @@ This project provides a specialized Tiled server configuration for managing scie
 
 ```bash
 # Build the Docker image
-docker build -t als_tiled .
+docker build -t als_tiled -f Containerfile .
 
 # Run the container
 docker run -p 8000:8000 als_tiled
@@ -122,7 +122,7 @@ mypy src
 ### Building the Image
 
 ```bash
-docker build -t als_tiled .
+docker build -t als_tiled -f .Containerfile .
 ```
 
 ### Running the Container
