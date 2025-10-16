@@ -1,20 +1,26 @@
 import logging
 import os
 import pathlib
-from logging import StreamHandler
+from typing import Any, Optional
 
 import fabio
 from tiled.adapters.array import ArrayAdapter
-from tiled.structures.core import Spec
+from tiled.adapters.utils import init_adapter_from_catalog
+from tiled.catalog.orm import Node
+from tiled.structures.array import ArrayStructure
+from tiled.structures.core import Spec, StructureFamily
+from tiled.structures.data_source import DataSource
+from tiled.type_aliases import JSON
 from tiled.utils import path_from_uri
 
-logger = logging.getLogger("tiled.adapters.edf")
-logger.addHandler(StreamHandler())
-logger.setLevel("INFO")
+logger = logging.getLogger("als_tiled.adapters.bl733.edf")
+if not logger.handlers:
+    logger.addHandler(logging.StreamHandler())
+logger.setLevel(logging.INFO)
 
 
 def parse_txt_accompanying_edf(filepath):
-    """Pase a .txt file produced at ALS beamline 7.3.3 into a dictionary.
+    """Parse a .txt file produced at ALS beamline 7.3.3 into a dictionary.
 
     Parameters
     ----------
@@ -29,7 +35,7 @@ def parse_txt_accompanying_edf(filepath):
 
     # File does not exist, return empty dictionary
     if not os.path.isfile(txt_filepath):
-        logger.warn(f"{filepath} has no corresponding .txt.")
+        logger.warning(f"{filepath} has no corresponding .txt.")
         return dict()
 
     with open(txt_filepath, "r") as file:
@@ -51,46 +57,56 @@ def parse_txt_accompanying_edf(filepath):
     return txt_params
 
 
-def read(data_uri, structure=None, metadata=None, specs=None, access_policy=None):
-    """Read a detector image saved as .edf produced at ALS beamline 7.3.3
+class EDFAdapter(ArrayAdapter):
+    structure_family = StructureFamily.array
 
-    Parameters
-    ----------
-    data_uri: str
-        Uri of the .edf file, typically a file:// uri.
-    """
-    # TODO Should we catch any read errors here?
-    filepath = path_from_uri(data_uri)
-    file = fabio.open(filepath)
-    array = file.data
+    def __init__(
+        self,
+        data_uri: str,
+        structure: Optional[ArrayStructure] = None,
+        metadata: Optional[JSON] = None,
+        specs: Optional[list[Spec]] = None,
+        **kwargs: Optional[Any],
+    ) -> None:
+        """Adapter for `.edf` files (e.g. PILATUS3 2M) at ALS beamline 7.3.3."""
 
-    # Merge parameters from the header into other meta data
-    if metadata is None:
-        metadata = file.header
-    else:
-        metadata = {**metadata, **file.header}
+        filepath = path_from_uri(data_uri)
 
-    # If a .txt file with the same name exists
-    # extract additional meta data from it
-    txt_params = parse_txt_accompanying_edf(filepath)
-    metadata = {**metadata, **txt_params}
-    return ArrayAdapter.from_array(array, metadata=metadata, specs=[Spec("edf")])
+        metadata = metadata or dict()
+        with fabio.open(filepath) as edf_file:
+            array = edf_file.data
+            edf_metadata = edf_file.header
 
+            # Merge parameters from the header into potentially existing meta data
+            metadata = {**metadata, **edf_metadata}
 
-async def walk_edf_with_txt(
-    catalog,
-    path,
-    files,
-    directories,
-    settings,
-):
-    """
-    Possible patters:
-    1-1 txt-edf
-    1 log, many edfs
-    1 txt - 2 edf with _hi _lo
-    """
-    # TODO
-    unhandled_files = files
-    unhandled_directories = directories
-    return unhandled_files, unhandled_directories
+        # If a .txt file with the same name exists
+        # extract additional meta data from it
+        txt_metadata = parse_txt_accompanying_edf(filepath)
+        metadata = {**metadata, **txt_metadata}
+
+        super().__init__(
+            array=array,
+            structure=structure or ArrayStructure.from_array(array),
+            metadata=metadata,
+            specs=(specs or []) + [Spec("als-bl733-edf", version="1.0")],
+            **kwargs,
+        )
+
+    @classmethod
+    def from_catalog(
+        cls,
+        data_source: DataSource,
+        node: Node,
+        /,
+        **kwargs: Optional[Any],
+    ) -> "EDFAdapter":
+        return init_adapter_from_catalog(cls, data_source, node, **kwargs)
+
+    @classmethod
+    def from_uris(
+        cls,
+        data_uri: str,
+        **kwargs: Optional[Any],
+    ) -> "EDFAdapter":
+        return cls(data_uri, **kwargs)

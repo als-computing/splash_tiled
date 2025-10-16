@@ -6,10 +6,11 @@ from logging import StreamHandler
 
 import fabio
 import numpy as np
-from als_tiled.bl733.adapters.edf import parse_txt_accompanying_edf
 from tiled.adapters.array import ArrayAdapter
 from tiled.structures.core import Spec
 from tiled.utils import path_from_uri
+
+from als_tiled.bl733.adapters.edf import parse_txt_accompanying_edf
 
 logger = logging.getLogger("tiled.adapters.gb")
 logger.addHandler(StreamHandler())
