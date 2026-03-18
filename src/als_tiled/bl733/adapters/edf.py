@@ -13,13 +13,10 @@ from tiled.structures.data_source import DataSource
 from tiled.type_aliases import JSON
 from tiled.utils import path_from_uri
 
-logger = logging.getLogger("als_tiled.adapters.bl733.edf")
-if not logger.handlers:
-    logger.addHandler(logging.StreamHandler())
-logger.setLevel(logging.INFO)
+logger = logging.getLogger(__name__)
 
 
-def parse_txt_accompanying_edf(filepath):
+def parse_txt_accompanying_edf(filepath: str | pathlib.Path) -> dict[str, Any]:
     """Parse a .txt file produced at ALS beamline 7.3.3 into a dictionary.
 
     Parameters

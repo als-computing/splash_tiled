@@ -2,52 +2,88 @@ import logging
 import os
 import pathlib
 from datetime import datetime
-from logging import StreamHandler
+from typing import Any, Optional
 
 import fabio
 import numpy as np
 from tiled.adapters.array import ArrayAdapter
-from tiled.structures.core import Spec
+from tiled.adapters.utils import init_adapter_from_catalog
+from tiled.catalog.orm import Node
+from tiled.structures.array import ArrayStructure
+from tiled.structures.core import Spec, StructureFamily
+from tiled.structures.data_source import DataSource
+from tiled.type_aliases import JSON
 from tiled.utils import path_from_uri
 
 from als_tiled.bl733.adapters.edf import parse_txt_accompanying_edf
 
-logger = logging.getLogger("tiled.adapters.gb")
-logger.addHandler(StreamHandler())
-logger.setLevel("INFO")
+logger = logging.getLogger(__name__)
+
+# Pixel dimensions for the PILATUS 2M detector at ALS beamline 7.3.3
+PILATUS_2M_PIXELS_X = 1475
+PILATUS_2M_PIXELS_Y = 1679
 
 
-def read(data_uri, structure=None, metadata=None, specs=None, access_policy=None):
-    """Read a detector image saved as .gb produced at ALS beamline 7.3.3
+class GeneralBinaryPilatus2MAdapter(ArrayAdapter):
+    structure_family = StructureFamily.array
 
-    Parameters
-    ----------
-    data_uri: str
-        Uri of the .edf file, typically a file:// uri.
-    """
-    filepath = path_from_uri(data_uri)
-    pixels_x = 1475
-    pixels_y = 1679
-    data = np.fromfile(filepath, dtype="<f4")
-    expected_size = pixels_x * pixels_y
-    if data.size != expected_size:
-        raise ValueError(
-            f"Data size ({data.size}) does not match expected size ({expected_size})."
+    def __init__(
+        self,
+        data_uri: str,
+        structure: Optional[ArrayStructure] = None,
+        metadata: Optional[JSON] = None,
+        specs: Optional[list[Spec]] = None,
+        **kwargs: Optional[Any],
+    ) -> None:
+        """Adapter for a detector image saved as .gb produced at ALS beamline 7.3.3"""
+        filepath = path_from_uri(data_uri)
+        data = np.fromfile(filepath, dtype="<f4")
+        expected_size = PILATUS_2M_PIXELS_X * PILATUS_2M_PIXELS_Y
+        if data.size != expected_size:
+            raise ValueError(
+                f"Data size ({data.size}) does not match expected size "
+                f"({expected_size})."
+            )
+        array = data.reshape((PILATUS_2M_PIXELS_Y, PILATUS_2M_PIXELS_X))
+
+        additional_edf_metadata = parse_edf_accompanying_gb(filepath)
+
+        # Combine the metadata dictionaries - the following method combines the
+        # metadata dictionaries but there is a potential to overwrrite the values
+        # for the same keys. If same keys are present in both dictionaries, then
+        # an alternate method should be used to combine the dictionaries, similar to
+        # the one used in the combine_edf_metadata_for_gb method.
+        metadata = (
+            {**metadata, **additional_edf_metadata}
+            if metadata
+            else additional_edf_metadata
         )
-    array = data.reshape((pixels_y, pixels_x))
 
-    additional_edf_metadata = parse_edf_accompanying_gb(filepath)
+        super().__init__(
+            array=array,
+            structure=structure or ArrayStructure.from_array(array),
+            metadata=metadata,
+            specs=(specs or []) + [Spec("als-bl733-gb", version="1.0")],
+            **kwargs,
+        )
 
-    # Combine the metadata dictionaries - the following method combines the
-    # metadata dictionaries but there is a potential to overwrrite the values
-    # for the same keys. If same keys are present in both dictionaries, then
-    # an alternate method should be used to combine the dictionaries, similar to
-    # the one used in the combine_edf_metadata_for_gb method.
-    metadata = (
-        {**metadata, **additional_edf_metadata} if metadata else additional_edf_metadata
-    )
+    @classmethod
+    def from_catalog(
+        cls,
+        data_source: DataSource,
+        node: Node,
+        /,
+        **kwargs: Optional[Any],
+    ) -> "GeneralBinaryPilatus2MAdapter":
+        return init_adapter_from_catalog(cls, data_source, node, **kwargs)
 
-    return ArrayAdapter.from_array(array, metadata=metadata, specs=[Spec("gb")])
+    @classmethod
+    def from_uris(
+        cls,
+        data_uri: str,
+        **kwargs: Optional[Any],
+    ) -> "GeneralBinaryPilatus2MAdapter":
+        return cls(data_uri, **kwargs)
 
 
 def combine_edf_metadata_for_gb(hi_dict, lo_dict):
