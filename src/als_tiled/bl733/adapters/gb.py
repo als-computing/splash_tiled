@@ -50,11 +50,15 @@ class GeneralBinaryPilatus2MAdapter(ArrayAdapter):
             **GeneralBinaryPilatus2MAdapter._parse_accompanying_metadata(filepath_gb),
         }
 
+        gb_spec = Spec("als-bl733-gb", version="1.0")
+        specs = list(specs or [])
+        if gb_spec not in specs:
+            specs.append(gb_spec)
         super().__init__(
             array=array,
             structure=structure or ArrayStructure.from_array(array),
             metadata=metadata,
-            specs=(specs or []) + [Spec("als-bl733-gb", version="1.0")],
+            specs=specs,
             **kwargs,
         )
 

@@ -40,11 +40,15 @@ class EDFAdapter(ArrayAdapter):
             **parse_txt_accompanying_edf(filepath),
         }
 
+        edf_spec = Spec("als-bl733-edf", version="1.0")
+        specs = list(specs or [])
+        if edf_spec not in specs:
+            specs.append(edf_spec)
         super().__init__(
             array=array,
             structure=structure or ArrayStructure.from_array(array),
             metadata=metadata,
-            specs=(specs or []) + [Spec("als-bl733-edf", version="1.0")],
+            specs=specs,
             **kwargs,
         )
 
