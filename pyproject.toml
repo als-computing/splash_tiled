@@ -22,7 +22,7 @@ classifiers = [
 ]
 requires-python = ">=3.11"
 dependencies = [
-
+  "tiled[client]>=0.2.8",
 ]
 
 [project.optional-dependencies]
@@ -41,15 +41,9 @@ test = [
     "pytest-cov",
     "pytest-asyncio",
 ]
-
-tiled_all = [
-  "tiled[all]"
+tiled-all = [
+  "tiled[all]>=0.2.8",
 ]
-
-tiled_client = [
-  "tiled[client]"
-]
-
 bl733 = [
   "fabio",
 ]
