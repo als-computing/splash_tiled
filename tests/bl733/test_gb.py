@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+import pytest_asyncio
 from tiled.client import Context, from_context
 from tiled.client.register import register
 from tiled.server.app import build_app_from_config
@@ -31,7 +32,7 @@ def _tiled_config(tmp_path):
     }
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def gb_client(tmp_path, bl733_gb_path):
     with Context.from_app(build_app_from_config(_tiled_config(tmp_path))) as context:
         client = from_context(context)
@@ -44,7 +45,7 @@ async def gb_client(tmp_path, bl733_gb_path):
         yield client
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_gb_reads_array(gb_client):
     """Array returned by the tiled client matches the data written to disk."""
     expected = np.arange(PIXELS_X * PIXELS_Y, dtype="<f4").reshape(PIXELS_Y, PIXELS_X)
@@ -52,7 +53,7 @@ async def test_gb_reads_array(gb_client):
     np.testing.assert_array_equal(result, expected)
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_gb_metadata_includes_edf_fields(gb_client):
     """EDF header fields from the hi/lo companions appear
     in the tiled entry metadata."""
@@ -65,7 +66,7 @@ async def test_gb_metadata_includes_edf_fields(gb_client):
     assert metadata["Date"] == "2025-10-29T20:15:23"
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_gb_metadata_includes_txt_fields(gb_client):
     """Companion .txt fields from the hi/lo EDF companions appear
     in the tiled entry metadata."""
@@ -73,6 +74,25 @@ async def test_gb_metadata_includes_txt_fields(gb_client):
     assert metadata["Exposure time s"] == "0.100"
     assert metadata["Normalize by"] == "Diode"
     assert metadata["PI"] == "PILastname"
+
+
+@pytest.mark.asyncio
+async def test_gb_missing_edf(tmp_path):
+    """GB file registers successfully when its companion EDF files are absent."""
+    gb_file = tmp_path / "scan_name_sfloat_2m.gb"
+    np.arange(PIXELS_X * PIXELS_Y, dtype="<f4").tofile(gb_file)
+
+    with Context.from_app(build_app_from_config(_tiled_config(tmp_path))) as context:
+        client = from_context(context)
+        await register(
+            client,
+            tmp_path,
+            adapters_by_mimetype={GB_MIMETYPE: GB_ADAPTER},
+            mimetypes_by_file_ext={".gb": GB_MIMETYPE},
+        )
+        result = client["scan_name_sfloat_2m"].read()
+        assert result.shape == (PIXELS_Y, PIXELS_X)
+        assert client["scan_name_sfloat_2m"].metadata.get("Date") is None
 
 
 def test_gb_wrong_size(tmp_path):

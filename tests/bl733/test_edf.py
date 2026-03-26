@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+import pytest_asyncio
 from tiled.client import Context, from_context
 from tiled.client.register import register
 from tiled.server.app import build_app_from_config
@@ -28,7 +29,7 @@ def _tiled_config(tmp_path):
     }
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def edf_client(tmp_path, bl733_edf_path):
     with Context.from_app(build_app_from_config(_tiled_config(tmp_path))) as context:
         client = from_context(context)
@@ -41,7 +42,7 @@ async def edf_client(tmp_path, bl733_edf_path):
         yield client
 
 
-@pytest.mark.anyio(backend="asyncio")
+@pytest.mark.asyncio
 async def test_edf_reads_array(edf_client):
     """Array returned by the tiled client matches the data written to disk."""
     expected = np.arange(1475 * 1679, dtype=np.int32).reshape(1679, 1475)
@@ -49,7 +50,7 @@ async def test_edf_reads_array(edf_client):
     np.testing.assert_array_equal(result, expected)
 
 
-@pytest.mark.anyio(backend="asyncio")
+@pytest.mark.asyncio
 async def test_edf_metadata_includes_header_fields(edf_client):
     """EDF header fields appear in the tiled entry metadata."""
     metadata = edf_client["scan_name_2m"].metadata
@@ -59,7 +60,7 @@ async def test_edf_metadata_includes_header_fields(edf_client):
     assert metadata["Dim_2"] == "1679"
 
 
-@pytest.mark.anyio(backend="asyncio")
+@pytest.mark.asyncio
 async def test_edf_metadata_includes_txt_fields(edf_client):
     """Companion .txt fields appear in the tiled entry metadata."""
     metadata = edf_client["scan_name_2m"].metadata
