@@ -1,2 +1,2 @@
-def test_main_function():
+def test_main_function() -> None:
     pass

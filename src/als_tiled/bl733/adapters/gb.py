@@ -81,7 +81,7 @@ class GeneralBinaryPilatus2MAdapter(ArrayAdapter):
         return cls(data_uri, **kwargs)
 
     @staticmethod
-    def _read_edf(filepath_edf: pathlib.Path) -> tuple[dict, datetime | None]:
+    def _read_edf(filepath_edf: pathlib.Path) -> tuple[dict[str, Any], datetime | None]:
         """Read one EDF file and its companion .txt, returning (metadata, date)."""
         metadata_txt = parse_txt_accompanying_edf(filepath_edf)
         if not filepath_edf.is_file():
@@ -92,7 +92,7 @@ class GeneralBinaryPilatus2MAdapter(ArrayAdapter):
         return {**metadata_txt, **header}, date
 
     @staticmethod
-    def _parse_accompanying_metadata(filepath_gb: pathlib.Path) -> dict:
+    def _parse_accompanying_metadata(filepath_gb: pathlib.Path) -> dict[str, Any]:
         """Read the hi and lo EDF companions for a .gb file and merge their metadata."""
         filepath_edf_hi = pathlib.Path(
             str(filepath_gb.with_suffix(".edf")).replace("sfloat", "hi")
@@ -116,7 +116,9 @@ class GeneralBinaryPilatus2MAdapter(ArrayAdapter):
         return combined_metadata
 
     @staticmethod
-    def _combine_metadata(metadata_hi: dict, metadata_lo: dict) -> dict:
+    def _combine_metadata(
+        metadata_hi: dict[str, Any], metadata_lo: dict[str, Any]
+    ) -> dict[str, Any]:
         """Combine metadata from hi and lo EDF files.
 
         Keys with identical values are kept once. Keys with different values are

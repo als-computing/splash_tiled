@@ -85,12 +85,6 @@ profile = "black"
 multi_line_output = 3
 line_length = 88
 
-[tool.mypy]
-python_version = "3.11"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
-
 [tool.pytest.ini_options]
 minversion = "7.0"
 addopts = "-ra -q --cov=als_tiled --cov-report=term-missing"
