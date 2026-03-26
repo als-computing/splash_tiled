@@ -5,13 +5,14 @@ from tiled.client import Context, from_context
 from tiled.client.register import register
 from tiled.server.app import build_app_from_config
 
-from als_tiled.bl733.adapters.gb import GeneralBinaryPilatus2MAdapter
+from als_tiled.bl733.adapters.gb import (
+    PILATUS_2M_PIXELS_X,
+    PILATUS_2M_PIXELS_Y,
+    GeneralBinaryPilatus2MAdapter,
+)
 
 GB_ADAPTER = "als_tiled.bl733.adapters.gb:GeneralBinaryPilatus2MAdapter"
 GB_MIMETYPE = "application/x-gb"
-
-PIXELS_X = 1475
-PIXELS_Y = 1679
 
 
 def _tiled_config(tmp_path):
@@ -48,7 +49,9 @@ async def gb_client(tmp_path, bl733_gb_path):
 @pytest.mark.asyncio
 async def test_gb_reads_array(gb_client):
     """Array returned by the tiled client matches the data written to disk."""
-    expected = np.arange(PIXELS_X * PIXELS_Y, dtype="<f4").reshape(PIXELS_Y, PIXELS_X)
+    expected = np.arange(
+        PILATUS_2M_PIXELS_X * PILATUS_2M_PIXELS_Y, dtype="<f4"
+    ).reshape(PILATUS_2M_PIXELS_Y, PILATUS_2M_PIXELS_X)
     result = gb_client["scan_name_sfloat_2m"].read()
     np.testing.assert_array_equal(result, expected)
 
@@ -80,7 +83,7 @@ async def test_gb_metadata_includes_txt_fields(gb_client):
 async def test_gb_missing_edf(tmp_path):
     """GB file registers successfully when its companion EDF files are absent."""
     gb_file = tmp_path / "scan_name_sfloat_2m.gb"
-    np.arange(PIXELS_X * PIXELS_Y, dtype="<f4").tofile(gb_file)
+    np.arange(PILATUS_2M_PIXELS_X * PILATUS_2M_PIXELS_Y, dtype="<f4").tofile(gb_file)
 
     with Context.from_app(build_app_from_config(_tiled_config(tmp_path))) as context:
         client = from_context(context)
@@ -91,7 +94,7 @@ async def test_gb_missing_edf(tmp_path):
             mimetypes_by_file_ext={".gb": GB_MIMETYPE},
         )
         result = client["scan_name_sfloat_2m"].read()
-        assert result.shape == (PIXELS_Y, PIXELS_X)
+        assert result.shape == (PILATUS_2M_PIXELS_Y, PILATUS_2M_PIXELS_X)
         assert client["scan_name_sfloat_2m"].metadata.get("Date") is None
 
 

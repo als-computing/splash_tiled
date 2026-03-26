@@ -5,6 +5,7 @@ from tiled.client import Context, from_context
 from tiled.client.register import register
 from tiled.server.app import build_app_from_config
 
+from als_tiled.bl733.adapters.gb import PILATUS_2M_PIXELS_X, PILATUS_2M_PIXELS_Y
 from als_tiled.bl733.adapters.metadata import parse_txt_accompanying_edf
 
 EDF_ADAPTER = "als_tiled.bl733.adapters.edf:EDFAdapter"
@@ -45,7 +46,9 @@ async def edf_client(tmp_path, bl733_edf_path):
 @pytest.mark.asyncio
 async def test_edf_reads_array(edf_client):
     """Array returned by the tiled client matches the data written to disk."""
-    expected = np.arange(1475 * 1679, dtype=np.int32).reshape(1679, 1475)
+    expected = np.arange(
+        PILATUS_2M_PIXELS_X * PILATUS_2M_PIXELS_Y, dtype=np.int32
+    ).reshape(PILATUS_2M_PIXELS_Y, PILATUS_2M_PIXELS_X)
     result = edf_client["scan_name_2m"].read()
     np.testing.assert_array_equal(result, expected)
 

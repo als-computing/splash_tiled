@@ -2,6 +2,8 @@ import fabio
 import numpy as np
 import pytest
 
+from als_tiled.bl733.adapters.gb import PILATUS_2M_PIXELS_X, PILATUS_2M_PIXELS_Y
+
 SAMPLE_TXT_CONTENT = """\
 401.000
 10440.000
@@ -339,9 +341,13 @@ SAMPLE_EDF_HEADER_LO = {
     "Date": "Wed Oct 29 20:15:16 2025",
 }
 
-SAMPLE_EDF_DATA = np.arange(1475 * 1679, dtype=np.int32).reshape(1679, 1475)
+SAMPLE_EDF_DATA = np.arange(
+    PILATUS_2M_PIXELS_X * PILATUS_2M_PIXELS_Y, dtype=np.int32
+).reshape(PILATUS_2M_PIXELS_Y, PILATUS_2M_PIXELS_X)
 
-SAMPLE_GB_DATA = np.arange(1475 * 1679, dtype="<f4").reshape(1679, 1475)
+SAMPLE_GB_DATA = np.arange(
+    PILATUS_2M_PIXELS_X * PILATUS_2M_PIXELS_Y, dtype="<f4"
+).reshape(PILATUS_2M_PIXELS_Y, PILATUS_2M_PIXELS_X)
 
 
 @pytest.fixture
