@@ -40,7 +40,7 @@ test = [
     "pytest>=7.0",
     "pytest-cov",
     "pytest-asyncio",
-    "als_tiled[bl733]",
+    "als_tiled[bl733,tiled-all]",
 ]
 tiled-all = [
   "tiled[all]>=0.2.8",
