@@ -36,9 +36,8 @@ class EDFAdapter(ArrayAdapter):
             array = edf_file.data
             metadata_edf = edf_file.header
 
-        if "Date" in metadata_edf:
-            date = datetime.strptime(metadata_edf["Date"], "%a %b %d %H:%M:%S %Y")
-            metadata_edf["Date"] = date.isoformat()
+        date = datetime.strptime(metadata_edf["Date"], "%a %b %d %H:%M:%S %Y")
+        metadata_edf["Date"] = date.isoformat()
 
         metadata = {
             **(metadata or {}),
