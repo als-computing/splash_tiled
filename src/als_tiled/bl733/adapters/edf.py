@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 from typing import Any, Optional
 
 import fabio
@@ -33,6 +34,10 @@ class EDFAdapter(ArrayAdapter):
         with fabio.open(filepath) as edf_file:
             array = edf_file.data
             metadata_edf = edf_file.header
+
+        if "Date" in metadata_edf:
+            date = datetime.strptime(metadata_edf["Date"], "%a %b %d %H:%M:%S %Y")
+            metadata_edf["Date"] = date.isoformat()
 
         metadata = {
             **(metadata or {}),

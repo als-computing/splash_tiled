@@ -107,10 +107,15 @@ class GeneralBinaryPilatus2MAdapter(ArrayAdapter):
             metadata_hi, metadata_lo
         )
 
+        date = None
         if date_hi is not None and date_lo is not None:
-            combined_metadata["Date"] = date_hi if date_hi > date_lo else date_lo
-        else:
-            combined_metadata["Date"] = date_hi if date_hi is not None else date_lo
+            date = date_hi if date_hi > date_lo else date_lo
+        elif date_hi is not None:
+            date = date_hi
+        elif date_lo is not None:
+            date = date_lo
+        if date is not None:
+            combined_metadata["Date"] = date.isoformat()
 
         return combined_metadata
 
