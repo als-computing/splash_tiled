@@ -86,8 +86,7 @@ class GeneralBinaryPilatus2MAdapter(ArrayAdapter):
         metadata_txt = parse_txt_accompanying_edf(filepath_edf)
         if not filepath_edf.is_file():
             return metadata_txt, None
-        with fabio.open(filepath_edf) as edf_file:
-            header = edf_file.header
+        header = fabio.openheader(filepath_edf).header
         date = datetime.strptime(header["Date"], "%a %b %d %H:%M:%S %Y")
         return {**metadata_txt, **header}, date
 
