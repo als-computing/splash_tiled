@@ -36,6 +36,7 @@ class GeneralBinaryPilatus2MAdapter(ArrayAdapter):
     ) -> None:
         """Adapter for a stitched detector image .gb produced at ALS beamline 7.3.3."""
         filepath_gb = path_from_uri(data_uri)
+        logger.debug("Loading GB file produced by ALS beamline 7.3.3: %s", filepath_gb)
         data = np.fromfile(filepath_gb, dtype="<f4")
         expected_size = PILATUS_2M_PIXELS_X * PILATUS_2M_PIXELS_Y
         if data.size != expected_size:
@@ -85,6 +86,9 @@ class GeneralBinaryPilatus2MAdapter(ArrayAdapter):
         """Read one EDF file and its companion .txt, returning (metadata, date)."""
         metadata_txt = parse_txt_accompanying_edf(filepath_edf)
         if not filepath_edf.is_file():
+            logger.warning(
+                f"GeneralBinary file is missing accompanying EDF file {filepath_edf}."
+            )
             return metadata_txt, None
         header = fabio.openheader(filepath_edf).header
         date = datetime.strptime(header["Date"], "%a %b %d %H:%M:%S %Y")

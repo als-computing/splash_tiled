@@ -30,6 +30,7 @@ class EDFAdapter(ArrayAdapter):
     ) -> None:
         """Adapter for `.edf` files (e.g. PILATUS3 2M) at ALS beamline 7.3.3."""
         filepath = path_from_uri(data_uri)
+        logger.debug("Loading EDF file produced by ALS beamline 7.3.3: %s", filepath)
 
         with fabio.open(filepath) as edf_file:
             array = edf_file.data
