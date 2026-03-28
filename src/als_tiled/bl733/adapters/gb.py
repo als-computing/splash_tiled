@@ -17,6 +17,7 @@ from tiled.utils import path_from_uri
 from als_tiled.bl733.adapters.metadata import parse_txt_accompanying_edf
 
 logger = logging.getLogger(__name__)
+LOADING_MESSAGE = "Loading GB file produced by ALS beamline 7.3.3: %s"
 
 # Pixel dimensions for the PILATUS 2M detector at ALS beamline 7.3.3
 PILATUS_2M_PIXELS_X = 1475
@@ -36,7 +37,7 @@ class GeneralBinaryPilatus2MAdapter(ArrayAdapter):
     ) -> None:
         """Adapter for a stitched detector image .gb produced at ALS beamline 7.3.3."""
         filepath_gb = path_from_uri(data_uri)
-        logger.debug("Loading GB file produced by ALS beamline 7.3.3: %s", filepath_gb)
+        logger.debug(LOADING_MESSAGE, filepath_gb)
         data = np.fromfile(filepath_gb, dtype="<f4")
         expected_size = PILATUS_2M_PIXELS_X * PILATUS_2M_PIXELS_Y
         if data.size != expected_size:

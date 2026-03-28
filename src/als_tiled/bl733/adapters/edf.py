@@ -15,6 +15,7 @@ from tiled.utils import path_from_uri
 from als_tiled.bl733.adapters.metadata import parse_txt_accompanying_edf
 
 logger = logging.getLogger(__name__)
+LOADING_MESSAGE = "Loading EDF file produced by ALS beamline 7.3.3: %s"
 
 
 class EDFAdapter(ArrayAdapter):
@@ -30,7 +31,7 @@ class EDFAdapter(ArrayAdapter):
     ) -> None:
         """Adapter for `.edf` files (e.g. PILATUS3 2M) at ALS beamline 7.3.3."""
         filepath = path_from_uri(data_uri)
-        logger.debug("Loading EDF file produced by ALS beamline 7.3.3: %s", filepath)
+        logger.debug(LOADING_MESSAGE, filepath)
 
         with fabio.open(filepath) as edf_file:
             array = edf_file.data
