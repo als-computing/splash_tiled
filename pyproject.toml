@@ -30,6 +30,22 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov",
+    "pytest-asyncio",
+    "black",
+    "isort",
+    "flake8",
+    "mypy",
+    "pre-commit",
+]
+test = [
+    "pytest>=7.0",
+    "pytest-cov",
+    "pytest-asyncio",
+    "splash_tiled[bl733,tiled-all]",
+]
 tiled-all = [
   "tiled[all]>=0.2.8",
 ]
