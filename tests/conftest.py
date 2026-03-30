@@ -6,6 +6,6 @@ import pytest
 
 
 @pytest.fixture
-def sample_data():
+def sample_data() -> dict[str, str]:
     """Sample data for testing."""
     return {"test": "data"}

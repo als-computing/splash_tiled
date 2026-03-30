@@ -47,7 +47,7 @@ jobs:
 
     - name: Type checking with mypy
       run: |
-        mypy src
+        mypy src tests
 
   test:
     runs-on: ubuntu-latest

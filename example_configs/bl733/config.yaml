@@ -1,0 +1,21 @@
+file_extensions:
+  edf: application/x-edf
+  gb: application/x-gb
+
+# Placeholder for future exporters that would allow download of arrays as edf or gb
+# To be determined if this should include download of metadata as txt files
+#media_types:
+#  array:
+#    application/x-edf: als_tiled.bl733.adapters.edf:export_edf
+#    application/x-gb: als_tiled.bl733.adapters.gb:export_gb
+
+trees:
+  - path: /
+    tree: tiled.catalog:from_uri
+    args:
+      uri: ./data/catalog.db
+      readable_storage: [./data]
+      init_if_not_exists: true
+      adapters_by_mimetype:
+        application/x-edf: als_tiled.bl733.adapters.edf:EDFAdapter
+        application/x-gb: als_tiled.bl733.adapters.gb:GeneralBinaryPilatus2MAdapter
