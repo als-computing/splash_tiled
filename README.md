@@ -69,23 +69,45 @@ This installs additional development dependencies including:
 
 ## Development
 
-### Setting up the Development Environment
 
-1. Clone the repository:
+### Using Pixi for Development
+
+This project supports [Pixi](https://pixi.sh/) for reproducible Python environments. Pixi handles dependency management and environment setup automatically.
+
+#### Setting up with Pixi
+
+1. Install Pixi (if you don't have it):
    ```bash
-   git clone https://github.com/als-lbl/splash_tiled.git
-   cd splash_tiled
+   curl -sSf https://pixi.sh/install.sh | bash
+   # Or see https://pixi.sh/docs/install/ for other methods
+   ```
+2. Create and activate the development environment:
+   ```bash
+   pixi install
+   pixi shell
+   ```
+3. (Optional) To update dependencies:
+   ```bash
+   pixi update
    ```
 
-2. Install development dependencies:
-   ```bash
-   pip install -e .[dev]
-   ```
+#### Running Tests with Pixi
 
-3. Install pre-commit hooks:
-   ```bash
-   pre-commit install
-   ```
+```bash
+pixi run test
+```
+
+#### Running Code Quality Checks with Pixi
+
+```bash
+pixi run lint      # Run all linters
+pixi run format    # Format code with black and isort
+pixi run typecheck # Run mypy type checks
+```
+
+You can also run any tool in the environment with `pixi run <tool>` (e.g., `pixi run pytest`).
+
+For more, see the [Pixi documentation](https://pixi.sh/docs/).
 
 ### Running Tests
 
