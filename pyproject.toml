@@ -40,7 +40,7 @@ test = [
     "pytest>=7.0",
     "pytest-cov",
     "pytest-asyncio",
-    "als_tiled[bl733,tiled-all]",
+    "splash_tiled[bl733,tiled-all]",
 ]
 tiled-all = [
   "tiled[all]>=0.2.8",
@@ -50,12 +50,12 @@ bl733 = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/als-lbl/als_tiled"
-Repository = "https://github.com/als-lbl/als_tiled"
-Documentation = "https://github.com/als-lbl/als_tiled#readme"
+Homepage = "https://github.com/als-lbl/splash_tiled"
+Repository = "https://github.com/als-lbl/splash_tiled"
+Documentation = "https://github.com/als-lbl/splash_tiled#readme"
 
 [project.scripts]
-als-tiled = "als_tiled.main:main"
+als-tiled = "splash_tiled.main:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -88,7 +88,7 @@ line_length = 88
 
 [tool.pytest.ini_options]
 minversion = "7.0"
-addopts = "-ra -q --cov=als_tiled --cov-report=term-missing"
+addopts = "-ra -q --cov=splash_tiled --cov-report=term-missing"
 testpaths = [
     "tests",
 ]

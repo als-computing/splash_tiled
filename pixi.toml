@@ -1,0 +1,30 @@
+# pixi.toml
+# Project environments for als_tiled
+
+[project]
+name = "als_tiled"
+channels = ["conda-forge"]
+
+[environments.dev]
+dependencies = [
+    "python =3.11",
+    "pytest",
+    "mypy",
+    "ipython",
+    "notebook",
+    "tiled",
+    "fabio",
+    "zarr",
+    "numpy",
+    "pandas"
+]
+
+[environments.bl733]
+dependencies = [
+    "python =3.11",
+    "tiled",
+    "fabio",
+    "zarr",
+    "numpy",
+    "pandas"
+]

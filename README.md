@@ -20,18 +20,18 @@ This project provides a specialized Tiled server configuration for managing scie
 
 ```bash
 # Build the Docker image
-docker build -t als_tiled -f Containerfile .
+docker build -t splash_tiled -f Containerfile .
 
 # Run the container
-docker run -p 8000:8000 als_tiled
+docker run -p 8000:8000 splash_tiled
 ```
 
 ### Local Development
 
 ```bash
 # Clone the repository
-git clone https://github.com/als-lbl/als_tiled.git
-cd als_tiled
+git clone https://github.com/als-lbl/splash_tiled.git
+cd splash_tiled
 
 # Install in development mode
 pip install -e .[dev]
@@ -73,8 +73,8 @@ This installs additional development dependencies including:
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/als-lbl/als_tiled.git
-   cd als_tiled
+   git clone https://github.com/als-lbl/splash_tiled.git
+   cd splash_tiled
    ```
 
 2. Install development dependencies:
@@ -94,7 +94,7 @@ This installs additional development dependencies including:
 pytest
 
 # Run tests with coverage
-pytest --cov=als_tiled
+pytest --cov=splash_tiled
 
 # Run specific test file
 pytest tests/test_main.py
@@ -122,20 +122,20 @@ mypy src
 ### Building the Image
 
 ```bash
-docker build -t als_tiled -f .Containerfile .
+docker build -t splash_tiled -f .Containerfile .
 ```
 
 ### Running the Container
 
 ```bash
 # Basic run
-docker run -p 8000:8000 als_tiled
+docker run -p 8000:8000 splash_tiled
 
 # With environment variables
-docker run -p 8000:8000 -e TILED_SERVER_ENABLE_ORIGINS=* als_tiled
+docker run -p 8000:8000 -e TILED_SERVER_ENABLE_ORIGINS=* splash_tiled
 
 # With volume mounting for data
-docker run -p 8000:8000 -v /path/to/data:/data als_tiled
+docker run -p 8000:8000 -v /path/to/data:/data splash_tiled
 ```
 
 ## CI/CD
@@ -157,7 +157,7 @@ The project includes a comprehensive GitHub Actions workflow that:
 
 Docker images are automatically published to:
 ```
-ghcr.io/als-lbl/als_tiled
+ghcr.io/als-lbl/splash_tiled
 ```
 
 ## Configuration
@@ -194,4 +194,4 @@ For support and questions, please open an issue on the GitHub repository or cont
 ## Related Projects
 
 - [Tiled](https://github.com/bluesky/tiled) - The underlying framework
-- [Bluesky](https://github.com/bluesky/bluesky) - Data acquisition and analysis framework# als_tiled
+- [Bluesky](https://github.com/bluesky/bluesky) - Data acquisition and analysis framework# splash_tiled
