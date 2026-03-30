@@ -1,5 +1,5 @@
 """
-Test configuration and fixtures for als_tiled.
+Test configuration and fixtures for splash_tiled.
 """
 
 import pytest

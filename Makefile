@@ -22,7 +22,7 @@ install-dev:
 	pre-commit install
 
 test:
-	pytest --cov=als_tiled --cov-report=term-missing
+	pytest --cov=splash_tiled --cov-report=term-missing
 
 lint:
 	flake8 src tests
@@ -45,7 +45,7 @@ build:
 	python -m build
 
 docker-build:
-	docker build -t als_tiled -f Containerfile .
+	docker build -t splash_tiled -f Containerfile .
 
 docker-run:
-	docker run -p 8000:8000 als_tiled
+	docker run -p 8000:8000 splash_tiled

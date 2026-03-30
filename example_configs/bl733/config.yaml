@@ -6,8 +6,8 @@ file_extensions:
 # To be determined if this should include download of metadata as txt files
 #media_types:
 #  array:
-#    application/x-edf: als_tiled.bl733.adapters.edf:export_edf
-#    application/x-gb: als_tiled.bl733.adapters.gb:export_gb
+#    application/x-edf: splash_tiled.bl733.adapters.edf:export_edf
+#    application/x-gb: splash_tiled.bl733.adapters.gb:export_gb
 
 trees:
   - path: /
@@ -17,5 +17,5 @@ trees:
       readable_storage: [./data]
       init_if_not_exists: true
       adapters_by_mimetype:
-        application/x-edf: als_tiled.bl733.adapters.edf:EDFAdapter
-        application/x-gb: als_tiled.bl733.adapters.gb:GeneralBinaryPilatus2MAdapter
+        application/x-edf: splash_tiled.bl733.adapters.edf:EDFAdapter
+        application/x-gb: splash_tiled.bl733.adapters.gb:GeneralBinaryPilatus2MAdapter

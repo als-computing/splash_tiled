@@ -2,7 +2,7 @@ import fabio
 import numpy as np
 import pytest
 
-from als_tiled.bl733.adapters.gb import PILATUS_2M_PIXELS_X, PILATUS_2M_PIXELS_Y
+from splash_tiled.bl733.adapters.gb import PILATUS_2M_PIXELS_X, PILATUS_2M_PIXELS_Y
 
 SAMPLE_TXT_CONTENT = """\
 401.000
