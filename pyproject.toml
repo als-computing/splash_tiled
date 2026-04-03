@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "als_tiled"
-version = "0.1.0"
+version = "0.2.8a1"
 description = "A tiled-based data management system for the Advanced Light Source"
 readme = "README.md"
 authors = [
