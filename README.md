@@ -189,6 +189,24 @@ The application can be configured through environment variables:
 - `TILED_SERVER_ENABLE_ORIGINS`: Configure CORS origins
 - `PYTHONPATH`: Python module search path
 
+## ESAF Sync Script
+
+The repository includes a small CLI for loading ESAFs into SQLite.
+
+```bash
+als-esaf-sync \
+   --beamline 7.0.2 \
+   --beamline 12.3.2 \
+   --db-path ./esafs.sqlite3
+```
+
+The script stores data in four tables:
+
+- `beamline` for sync metadata per beamline
+- `user` for PI, experimental lead, and participant identities
+- `esaf` for the ESAF record itself
+- `esaf_user` for user-to-ESAF roles
+
 ## Contributing
 
 1. Fork the repository

@@ -181,3 +181,5 @@ ehthumbs.db
 *.hdf5
 *.nc
 *.zarr/
+*.sqlite3
+tag_definitions.generated.yml
