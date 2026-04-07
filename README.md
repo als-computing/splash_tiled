@@ -179,7 +179,7 @@ The project includes a comprehensive GitHub Actions workflow that:
 
 Docker images are automatically published to:
 ```
-ghcr.io/als-lbl/splash_tiled
+ghcr.io/als-computing/splash_tiled
 ```
 
 ## Configuration
