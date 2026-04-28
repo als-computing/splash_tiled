@@ -10,9 +10,9 @@ This project provides a specialized Tiled server configuration for managing scie
 
 - Built on the robust Tiled framework
 - Docker containerization for easy deployment
-- Support for Python 3.11 and 3.12
+- Support for Python 3.13
 - Comprehensive CI/CD pipeline with GitHub Actions
-- Pre-configured development environment
+- Reproducible development environment managed with [Pixi](https://pixi.sh/)
 
 ## Quick Start
 
@@ -30,121 +30,86 @@ docker run -p 8000:8000 splash_tiled
 
 ```bash
 # Clone the repository
-git clone https://github.com/als-lbl/splash_tiled.git
+git clone https://github.com/als-computing/splash_tiled.git
 cd splash_tiled
 
-# Install in development mode
-pip install -e .[dev]
+# Install and activate the environment
+pixi install
+pixi shell
 
-# Run the application
-als-tiled
+# Run tests
+pixi run test
 ```
 
 ## Installation
 
 ### Requirements
 
-- Python 3.11 or 3.12
+- [Pixi](https://pixi.sh/) (recommended)
+- Python 3.13
 - Docker (for containerized deployment)
 
-### From Source
+### With Pixi (recommended)
 
 ```bash
-pip install -e .
+# Install Pixi if needed
+curl -sSf https://pixi.sh/install.sh | bash
+
+# Install all dependencies
+pixi install
 ```
 
-### Development Installation
-
-```bash
-pip install -e .[dev]
-```
-
-This installs additional development dependencies including:
-- pytest for testing
-- black for code formatting
-- isort for import sorting
-- flake8 for linting
-- mypy for type checking
-- pre-commit for git hooks
+Pixi manages all dependencies (including Python 3.13) and installs the package in editable mode automatically.
 
 ## Development
 
+This project uses [Pixi](https://pixi.sh/) for reproducible environments.
 
-### Using Pixi for Development
-
-This project supports [Pixi](https://pixi.sh/) for reproducible Python environments. Pixi handles dependency management and environment setup automatically.
-
-#### Setting up with Pixi
-
-1. Install Pixi (if you don't have it):
-   ```bash
-   curl -sSf https://pixi.sh/install.sh | bash
-   # Or see https://pixi.sh/docs/install/ for other methods
-   ```
-2. Create and activate the development environment:
-   ```bash
-   pixi install
-   pixi shell
-   ```
-3. (Optional) To update dependencies:
-   ```bash
-   pixi update
-   ```
-
-#### Running Tests with Pixi
+### Setup
 
 ```bash
-pixi run test
+# Install Pixi if you don't have it
+curl -sSf https://pixi.sh/install.sh | bash
+
+# Install the environment
+pixi install
+
+# Start a shell in the environment
+pixi shell
 ```
 
-#### Running Code Quality Checks with Pixi
-
+To update dependencies:
 ```bash
-pixi run lint      # Run all linters
-pixi run format    # Format code with black and isort
-pixi run typecheck # Run mypy type checks
+pixi update
 ```
-
-You can also run any tool in the environment with `pixi run <tool>` (e.g., `pixi run pytest`).
-
-For more, see the [Pixi documentation](https://pixi.sh/docs/).
 
 ### Running Tests
 
 ```bash
-# Run all tests
-pytest
+# Run all tests with coverage
+pixi run test
 
-# Run tests with coverage
-pytest --cov=splash_tiled
-
-# Run specific test file
-pytest tests/test_main.py
+# Or run pytest directly inside a pixi shell
+pytest tests/test_specific.py
 ```
 
 ### Code Quality
 
-The project uses several tools to maintain code quality:
+The project uses Black, isort, flake8, and mypy for code quality.
 
-- **Black**: Code formatting
-- **isort**: Import sorting
-- **flake8**: Linting
-- **mypy**: Type checking
-
-Run all quality checks:
 ```bash
-black src tests
-isort src tests
-flake8 src tests
-mypy src
+pixi run lint      # Check formatting, imports, style, and types
+pixi run format    # Auto-format code with black and isort
 ```
+
+For more, see the [Pixi documentation](https://pixi.sh/docs/).
 
 ## Docker
 
 ### Building the Image
 
 ```bash
-docker build -t splash_tiled -f .Containerfile .
+docker build -t splash_tiled -f Containerfile .
 ```
 
 ### Running the Container
@@ -165,7 +130,7 @@ docker run -p 8000:8000 -v /path/to/data:/data splash_tiled
 The project includes a comprehensive GitHub Actions workflow that:
 
 1. **Linting**: Runs code quality checks (black, isort, flake8, mypy)
-2. **Testing**: Executes the test suite across Python 3.11 and 3.12
+2. **Testing**: Executes the test suite with Python 3.13
 3. **Building**: Creates Docker images for multiple architectures
 4. **Publishing**: Pushes images to GitHub Container Registry
 
