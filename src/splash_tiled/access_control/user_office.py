@@ -14,6 +14,7 @@ import httpx
 import typer
 
 DEFAULT_API_URL = "https://als-esaf.als.lbl.gov/EsafInformation/GetEsaf"
+DEFAULT_STAFF_API_URL = "https://alsusweb.lbl.gov/GetStaffByBeamline/"
 
 
 class Beamline(StrEnum):
@@ -176,6 +177,12 @@ def ensure_schema(connection: sqlite3.Connection) -> None:
             CHECK (role IN ('participant', 'pi', 'exp_lead'))
         );
 
+        CREATE TABLE IF NOT EXISTS beamline_staff_user (
+            beamline_name TEXT NOT NULL,
+            user_name TEXT NOT NULL,
+            PRIMARY KEY (beamline_name, user_name)
+        );
+
         CREATE INDEX IF NOT EXISTS idx_esaf_beamline_name
         ON esaf (beamline_name);
 
@@ -274,6 +281,78 @@ def print_report(rows: list[dict[str, str]], elapsed_seconds: float) -> None:
     typer.echo("\nBeamline sync report:")
     typer.echo(format_report_table(rows))
     typer.echo(f"Total time: {elapsed_seconds:.2f} seconds")
+
+
+def fetch_beamline_staff(
+    client: httpx.Client,
+    api_url: str = DEFAULT_STAFF_API_URL,
+) -> list[dict[str, Any]]:
+    """Fetch all beamline staff from the ALS staff API.
+
+    Returns the raw list of ``{"Beamline": ..., "Staff": [...]}`` records.
+    """
+    response = client.get(api_url, params={"bl": "all"})
+    response.raise_for_status()
+    payload = response.json()
+    if not isinstance(payload, list):
+        raise ValueError(
+            f"Expected list response from staff API, got {type(payload)!r}"
+        )
+    return payload
+
+
+def get_beamline_staff_groups(
+    staff_data: list[dict[str, Any]],
+) -> dict[str, list[str]]:
+    """Build a mapping of beamline name -> list of member emails.
+
+    Every person who appears in a beamline's Staff list is included as a
+    member of that beamline's group, identified by their (normalised) email
+    address.  Entries without a usable email are skipped.
+    """
+    groups: dict[str, list[str]] = {}
+    for entry in staff_data:
+        beamline_name = normalize_text(entry.get("Beamline"))
+        if not beamline_name:
+            continue
+        members: set[str] = set()
+        for person in entry.get("Staff") or []:
+            email = normalize_email(person.get("Email"))
+            if email:
+                members.add(email)
+        groups[beamline_name] = sorted(members)
+    return groups
+
+
+def sync_beamline_staff_groups(
+    connection: sqlite3.Connection,
+    groups: dict[str, list[str]],
+) -> None:
+    rows = [
+        (beamline_name, user_name)
+        for beamline_name, members in groups.items()
+        for user_name in members
+    ]
+    connection.execute("DELETE FROM beamline_staff_user")
+    connection.executemany(
+        "INSERT INTO beamline_staff_user (beamline_name, user_name) VALUES (?, ?)",
+        sorted(set(rows)),
+    )
+
+
+def get_beamline_staff_group_map(
+    connection: sqlite3.Connection,
+) -> dict[str, list[str]]:
+    rows = connection.execute("""
+        SELECT beamline_name, user_name
+        FROM beamline_staff_user
+        ORDER BY beamline_name, user_name
+        """).fetchall()
+
+    groups: dict[str, list[str]] = {}
+    for beamline_name, user_name in rows:
+        groups.setdefault(beamline_name, []).append(user_name)
+    return groups
 
 
 def get_esaf_orcid_map(connection: sqlite3.Connection) -> dict[str, list[str]]:
@@ -524,6 +603,19 @@ def run(
         with sqlite3.connect(db_path) as connection:
             ensure_schema(connection)
             try:
+                staff_data = fetch_beamline_staff(client)
+                staff_groups = get_beamline_staff_groups(staff_data)
+                sync_beamline_staff_groups(connection, staff_groups)
+                typer.echo(
+                    "Stored beamline staff groups " f"for {len(staff_groups)} beamlines"
+                )
+            except httpx.HTTPError as error:
+                typer.echo(
+                    f"Failed to fetch beamline staff groups: "
+                    f"{format_http_error(error)}",
+                    err=True,
+                )
+            try:
                 with typer.progressbar(
                     beamlines, label="Beamlines"
                 ) as beamline_progress:
@@ -641,3 +733,7 @@ def cli(
 
 def main() -> None:
     app()
+
+
+if __name__ == "__main__":
+    main()

@@ -9,6 +9,7 @@ from tiled.access_control.access_tags import AccessTagsCompiler
 from tiled.access_control.scopes import ALL_SCOPES
 
 from splash_tiled.access_control.user_office import (
+    get_beamline_staff_group_map,
     get_esaf_friendly_ids_by_beamline,
     get_esaf_orcid_map,
 )
@@ -35,8 +36,11 @@ def get_default_generated_tag_definitions_path() -> Path:
 def load_esaf_groups(esaf_db_path: Path) -> dict[str, list[str]]:
     with sqlite3.connect(esaf_db_path) as connection:
         groups = get_esaf_orcid_map(connection)
+        beamline_staff_groups = get_beamline_staff_group_map(connection)
         for beamline_name in get_esaf_friendly_ids_by_beamline(connection):
-            groups.setdefault(f"{beamline_name}-staff", [])
+            groups[f"{beamline_name}-staff"] = beamline_staff_groups.get(
+                beamline_name, []
+            )
         return groups
 
 

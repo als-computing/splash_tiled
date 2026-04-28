@@ -2,8 +2,11 @@ import sqlite3
 
 from splash_tiled.access_control.user_office import (
     ensure_schema,
+    get_beamline_staff_group_map,
+    get_beamline_staff_groups,
     get_esaf_orcid_map,
     sync_beamline,
+    sync_beamline_staff_groups,
     user_key,
 )
 
@@ -163,4 +166,35 @@ def test_get_esaf_orcid_map_returns_distinct_orcids_per_esaf() -> None:
                 "0000-0002-3979-8844",
                 "0000-0003-2335-7806",
             ]
+        }
+
+
+def test_sync_beamline_staff_groups_persists_email_members() -> None:
+    staff_payload = [
+        {
+            "Beamline": "9.3.2",
+            "Staff": [
+                {"Email": "ejcrumlin@lbl.gov"},
+                {"Email": "snemsak@lbl.gov"},
+                {"Email": "EJCRUMLIN@LBL.GOV"},
+                {"Email": "  "},
+            ],
+        },
+        {
+            "Beamline": "12.3.2",
+            "Staff": [
+                {"Email": "mblum@lbl.gov"},
+            ],
+        },
+    ]
+
+    groups = get_beamline_staff_groups(staff_payload)
+
+    with sqlite3.connect(":memory:") as connection:
+        ensure_schema(connection)
+        sync_beamline_staff_groups(connection, groups)
+
+        assert get_beamline_staff_group_map(connection) == {
+            "12.3.2": ["mblum@lbl.gov"],
+            "9.3.2": ["ejcrumlin@lbl.gov", "snemsak@lbl.gov"],
         }
