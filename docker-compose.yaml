@@ -66,33 +66,34 @@ services:
     entrypoint: ["access"]
     volumes:
       - ./tags:/app/tags:rw,Z
+      - ./data:/app/data:rw,Z
     profiles:
       - access
     restart: "no"
 
-  seed-data:
-    build:
-      context: .
-      dockerfile: Containerfile
-      security_opt:
-        - label=disable
-    userns_mode: keep-id
-    user: "${UID:-1000}:${GID:-1000}"
-    security_opt:
-      - label=disable
-    command:
-      - python
-      - /app/scripts/seed_dev_catalog.py
-      - --uri
-      - http://tiled:8000
-      - --wait-seconds
-      - "90"
-    volumes:
-      - ./data:/app/data:rw,Z
-      - ./tags:/app/tags:ro,Z
-    depends_on:
-      - tiled
-    environment:
-      ALICE_PASSWORD: ${ALICE_PASSWORD}
-      COMPILED_TAGS_DB: /app/data/compiled_tags.db
-    restart: "no"
+  # seed-data:
+  #   build:
+  #     context: .
+  #     dockerfile: Containerfile
+  #     security_opt:
+  #       - label=disable
+  #   userns_mode: keep-id
+  #   user: "${UID:-1000}:${GID:-1000}"
+  #   security_opt:
+  #     - label=disable
+  #   command:
+  #     - python
+  #     - /app/scripts/seed_dev_catalog.py
+  #     - --uri
+  #     - http://tiled:8000
+  #     - --wait-seconds
+  #     - "90"
+  #   volumes:
+  #     - ./data:/app/data:rw,Z
+  #     - ./tags:/app/tags:ro,Z
+  #   depends_on:
+  #     - tiled
+  #   environment:
+  #     ALICE_PASSWORD: ${ALICE_PASSWORD}
+  #     COMPILED_TAGS_DB: /app/data/compiled_tags.db
+  #   restart: "no"

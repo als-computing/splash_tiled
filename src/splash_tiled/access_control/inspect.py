@@ -228,15 +228,23 @@ def tags(
     orcid: Annotated[str, typer.Argument(help="User ORCID.")],
     compiled_db: Path = _COMPILED_DB_OPTION,
 ) -> None:
-    """List all tags a user has access to."""
+    """List all tags a user has access to, with their scopes."""
     with _connect(compiled_db) as conn:
         rows = conn.execute(
             """
-            SELECT DISTINCT t.name
+            SELECT t.name,
+                   t.is_public,
+                   GROUP_CONCAT(s.name, ', ') AS scopes,
+                   EXISTS (
+                       SELECT 1 FROM tag_owners towner
+                       WHERE towner.tag_id = t.id AND towner.user_id = u.id
+                   ) AS is_owner
             FROM tags t
             JOIN tags_users_scopes tus ON tus.tag_id = t.id
             JOIN users u ON u.id = tus.user_id
+            JOIN scopes s ON s.id = tus.scope_id
             WHERE u.name = ?
+            GROUP BY t.name
             ORDER BY t.name
             """,
             (orcid,),
@@ -244,8 +252,12 @@ def tags(
     if not rows:
         typer.echo(f"No tags found for {orcid}")
         return
-    for (tag,) in rows:
-        typer.echo(tag)
+    typer.echo(f"{'TAG':<40} {'PUBLIC':<8} {'OWNER':<8} SCOPES")
+    typer.echo("-" * 90)
+    for tag, is_public, scopes, is_owner in rows:
+        typer.echo(
+            f"{tag:<40} {'yes' if is_public else 'no':<8} {'yes' if is_owner else 'no':<8} {scopes or ''}"
+        )
 
 
 def main() -> None:

@@ -1,24 +1,31 @@
 authentication:
     providers:
-    - provider: example
+    - provider: local
       authenticator: tiled.authenticators:DictionaryAuthenticator
       args:
         users_to_passwords:
           alice: ${ALICE_PASSWORD}
           bob: ${BOB_PASSWORD}
         confirmation_message: "You have logged in as {id}."
+
+    - provider: keycloak_oidc
+      authenticator: tiled.authenticators:OIDCAuthenticator
+      args:
+        audience: account
+        client_id: ${OAUTH2_CLIENT_ID}
+        client_secret: ${OAUTH2_CLIENT_SECRET}
+        well_known_uri: "https://${KEYCLOAK_FQDN}/realms/${KEYCLOAK_REALM}/.well-known/openid-configuration"
+        confirmation_message: "You have logged in with OIDC as {id}."
+
     tiled_admins:
-      - provider: example
+      - provider: local
         id: alice
 
-file_extensions:
-  edf: application/x-edf
-  gb: application/x-gb
 
 access_control:
   access_policy: "tiled.access_control.access_policies:TagBasedAccessPolicy"
   args:
-    provider: "example"
+    provider: "keycloak_oidc"
     scopes:
     - "read:metadata"
     - "read:data"
@@ -31,6 +38,12 @@ access_control:
     tags_db:
       uri: "/app/data/compiled_tags.db"
     access_tags_parser: "tiled.access_control.access_tags:AccessTagsParser"
+
+
+file_extensions:
+  edf: application/x-edf
+  gb: application/x-gb
+
 
 trees:
   - path: /
