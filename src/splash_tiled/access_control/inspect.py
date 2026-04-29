@@ -31,6 +31,36 @@ def _connect(db_path: Path) -> sqlite3.Connection:
     return sqlite3.connect(db_path)
 
 
+@app.command("user-esafs")
+def user_esafs(
+    orcid: Annotated[str, typer.Argument(help="User ORCID.")],
+    db_path: Path = _DB_OPTION,
+) -> None:
+    """List ESAFs a user belongs to, with beamline, role, status, and title."""
+    with _connect(db_path) as conn:
+        rows = conn.execute(
+            """
+            SELECT e.esaf_friendly_id, e.beamline_name, eu.role, e.status, e.title
+            FROM esaf_user eu
+            JOIN user u ON u.user_key = eu.user_key
+            JOIN esaf e ON e.esaf_id = eu.esaf_id
+            WHERE u.orcid = ?
+            ORDER BY e.beamline_name, e.esaf_friendly_id, eu.role
+            """,
+            (orcid,),
+        ).fetchall()
+    if not rows:
+        typer.echo(f"No ESAFs found for {orcid}")
+        return
+    typer.echo(f"{'ESAF':<20} {'BEAMLINE':<12} {'ROLE':<16} {'STATUS':<12} TITLE")
+    typer.echo("-" * 90)
+    for esaf_id, beamline, role, status, title in rows:
+        title_col = (title or "")[:28]
+        typer.echo(
+            f"{esaf_id or '':<20} {beamline:<12} {role:<16} {(status or ''):<12} {title_col}"
+        )
+
+
 @app.command("user-proposals")
 def user_proposals(
     orcid: Annotated[str, typer.Argument(help="User ORCID.")],

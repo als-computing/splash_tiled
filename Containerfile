@@ -12,5 +12,5 @@ COPY --chown=app:app pyproject.toml README.md ./
 COPY --chown=app:app src/ ./src/
 RUN uv pip install --python /app/bin/python --no-cache ".[bl733]"
 COPY --chown=app:app scripts/ ./scripts/
-COPY --chown=app:app src/splash_tiled/bl733/adapters/edf.py /tiled_deploy/config/custom/edf.py
-COPY --chown=app:app src/splash_tiled/bl733/adapters/gb.py /tiled_deploy/config/custom/gb.py
+# COPY --chown=app:app src/splash_tiled/bl733/adapters/edf.py /tiled_deploy/config/custom/edf.py
+# COPY --chown=app:app src/splash_tiled/bl733/adapters/gb.py /tiled_deploy/config/custom/gb.py

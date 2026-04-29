@@ -1,12 +1,12 @@
 authentication:
     providers:
-    - provider: local
-      authenticator: tiled.authenticators:DictionaryAuthenticator
-      args:
-        users_to_passwords:
-          alice: ${ALICE_PASSWORD}
-          bob: ${BOB_PASSWORD}
-        confirmation_message: "You have logged in as {id}."
+    # - provider: local
+    #   authenticator: tiled.authenticators:DictionaryAuthenticator
+    #   args:
+    #     users_to_passwords:
+    #       alice: ${ALICE_PASSWORD}
+    #       bob: ${BOB_PASSWORD}
+    #     confirmation_message: "You have logged in as {id}."
 
     - provider: keycloak_oidc
       authenticator: tiled.authenticators:OIDCAuthenticator
@@ -40,9 +40,9 @@ access_control:
     access_tags_parser: "tiled.access_control.access_tags:AccessTagsParser"
 
 
-file_extensions:
-  edf: application/x-edf
-  gb: application/x-gb
+# file_extensions:
+#   edf: application/x-edf
+#   gb: application/x-gb
 
 
 trees:
@@ -53,6 +53,6 @@ trees:
       readable_storage: [/app/data]
       writable_storage: /app/data
       init_if_not_exists: true
-      adapters_by_mimetype:
-        application/x-edf: splash_tiled.bl733.adapters.edf:EDFAdapter
-        application/x-gb: splash_tiled.bl733.adapters.gb:GeneralBinaryPilatus2MAdapter
+      # adapters_by_mimetype:
+      #   application/x-edf: splash_tiled.bl733.adapters.edf:EDFAdapter
+      #   application/x-gb: splash_tiled.bl733.adapters.gb:GeneralBinaryPilatus2MAdapter
