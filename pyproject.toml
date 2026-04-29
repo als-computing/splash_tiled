@@ -41,6 +41,8 @@ dev = [
   "black",
   "isort",
   "mypy",
+  "pytest",
+  "pytest-cov",
 ]
 
 [project.urls]
