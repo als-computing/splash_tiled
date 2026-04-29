@@ -125,6 +125,41 @@ docker run -p 8000:8000 -e TILED_SERVER_ENABLE_ORIGINS=* splash_tiled
 docker run -p 8000:8000 -v /path/to/data:/data splash_tiled
 ```
 
+### Developer Compose Stack
+
+For access-control testing, use the compose stack in
+`docker-compose.dev.yaml`. It starts:
+
+- `tiled`: Tiled server from the project `Containerfile`
+- `sync-worker`: ESAF + staff sync loop from the same image, running on an interval
+- `seed-data`: one-shot service that creates a `beamlines` container with
+   beamline containers, ESAF containers, and array nodes with different
+   `access_blob.tags`
+
+Start server + sync worker:
+
+```bash
+docker compose -f docker-compose.dev.yaml up --build -d tiled sync-worker
+```
+
+Seed the catalog data:
+
+```bash
+docker compose -f docker-compose.dev.yaml run --rm seed-data
+```
+
+Adjust sync cadence and target beamlines via environment variables in
+`docker-compose.dev.yaml`:
+
+- `SYNC_CRON` (for example: `*/5 * * * *`)
+- `BEAMLINES` (comma-separated list or `all`)
+
+Stop everything:
+
+```bash
+docker compose -f docker-compose.dev.yaml down
+```
+
 ## CI/CD
 
 The project includes a comprehensive GitHub Actions workflow that:

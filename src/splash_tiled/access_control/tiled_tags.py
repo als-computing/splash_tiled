@@ -26,7 +26,7 @@ def get_default_output_sqlite_path() -> Path:
 
 
 def get_default_tag_definitions_path() -> Path:
-    return Path(__file__).resolve().parent / "tag_definitions.yml"
+    return Path(__file__).resolve().parent / "tag_definitions_stub.yaml"
 
 
 def get_default_generated_tag_definitions_path() -> Path:
@@ -64,6 +64,7 @@ def build_generated_tag_definitions(
     template = load_tag_definitions_template(tag_definitions_path)
     with sqlite3.connect(esaf_db_path) as connection:
         esaf_ids_by_beamline = get_esaf_friendly_ids_by_beamline(connection)
+        beamline_staff_groups = get_beamline_staff_group_map(connection)
 
     esaf_friendly_id_set = {
         esaf_friendly_id
@@ -86,6 +87,24 @@ def build_generated_tag_definitions(
 
     for beamline_name, esaf_friendly_ids in esaf_ids_by_beamline.items():
         beamline_staff_group_name = f"{beamline_name}-staff"
+
+        # Emit an explicit staff tag for each beamline so access checks can
+        # validate the tag even when no ESAF-specific tags are involved.
+        generated_tags.setdefault(
+            beamline_staff_group_name,
+            {
+                "groups": [
+                    {
+                        "name": beamline_staff_group_name,
+                        "role": "facility_user",
+                    }
+                ]
+            },
+        )
+
+        if beamline_name not in beamline_staff_groups:
+            beamline_staff_groups[beamline_name] = []
+
         for esaf_friendly_id in esaf_friendly_ids:
             generated_tags[esaf_friendly_id] = {
                 "groups": [
@@ -98,7 +117,10 @@ def build_generated_tag_definitions(
                         "role": "facility_user",
                     },
                 ],
-                "auto_tags": [{"name": "data_admin"}],
+                "auto_tags": [
+                    {"name": "data_admin"},
+                    {"name": beamline_staff_group_name},
+                ],
             }
 
     return {

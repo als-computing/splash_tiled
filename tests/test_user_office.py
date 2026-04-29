@@ -95,7 +95,7 @@ def test_sync_beamline_persists_normalized_records() -> None:
         assert user_count == 2
 
         role_rows = connection.execute(
-            "SELECT user_key, role FROM esaf_user WHERE esaf_id = 36017"
+            "SELECT user_key, role FROM esaf_user WHERE esaf_id = 36017 "
             "ORDER BY role, user_key"
         ).fetchall()
         assert role_rows == [

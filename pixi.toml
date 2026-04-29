@@ -4,36 +4,40 @@ name = "als_tiled"
 channels = ["conda-forge"]
 platforms = ["linux-64", "osx-64", "osx-arm64", "linux-aarch64"]
 
-[environments.default]
-features = ["bl733"]
+[environments]
+default = { features = ["bl733"] }
+dev = { features = ["bl733", "dev"] }
 
 [dependencies]
 python = "3.13.*"
 pip = "*"
-pytest = "*"
-pytest-cov = "*"
-pytest-asyncio = "*"
-mypy = "*"
-ipython = "*"
-notebook = "*"
 tiled = "*"
 httpx = "*"
 typer = "*"
 pyyaml = "*"
-fabio = "*"
+apscheduler = "*"
 zarr = "*"
 numpy = "*"
 pandas = "*"
+
+[feature.dev.dependencies]
+mypy = "*"
+ipython = "*"
+notebook = "*"
 black = "*"
 isort = "*"
 flake8 = "*"
 pre-commit = "*"
+pytest = ">=9.0.3,<10"
+pytest-cov = "*"
+pytest-asyncio = "*"
 
 [feature.bl733.dependencies]
 fabio = "*"
 
 [tasks]
 test = "pytest --cov=splash_tiled --cov-report=term-missing"
+test_user_office = "pytest -m user_office"
 lint = "flake8 src tests && black --check src tests && isort --check-only src tests && mypy src"
 format = "black src tests && isort src tests"
 als-hub = "als-hub --db-path ./esafs.sqlite3"

@@ -9,6 +9,7 @@ from splash_tiled.access_control.tiled_tags import (
     build_generated_tag_definitions,
     build_group_parser,
     build_sqlite_uri,
+    compile_tags,
     ensure_output_sqlite_path,
     generate_tag_definitions_yaml,
     write_tag_definitions_yaml,
@@ -56,7 +57,7 @@ def test_build_generated_tag_definitions_includes_template_sections_and_esaf_tag
     tmp_path: Path,
 ) -> None:
     esaf_db_path = tmp_path / "esafs.sqlite3"
-    template_path = tmp_path / "tag_definitions.yml"
+    template_path = tmp_path / "tag_definitions_stub.yaml"
 
     template_path.write_text(
         """
@@ -136,7 +137,7 @@ tag_owners:
             {"name": "SB-01482-001", "role": "facility_user"},
             {"name": "12.3.2-staff", "role": "facility_user"},
         ],
-        "auto_tags": [{"name": "data_admin"}],
+        "auto_tags": [{"name": "data_admin"}, {"name": "12.3.2-staff"}],
     }
     assert generated["tags"]["data_admin"]["users"] == [
         {"name": "cara", "role": "facility_admin"}
@@ -166,7 +167,7 @@ def test_generate_tag_definitions_yaml_writes_generated_esaf_tags(
     tmp_path: Path,
 ) -> None:
     esaf_db_path = tmp_path / "esafs.sqlite3"
-    template_path = tmp_path / "tag_definitions.yml"
+    template_path = tmp_path / "tag_definitions_stub.yaml"
     output_yaml_path = tmp_path / "tag_definitions.generated.yml"
 
     template_path.write_text(
@@ -240,6 +241,76 @@ tag_owners:
         {"name": "SB-01482-001", "role": "facility_user"},
         {"name": "12.3.2-staff", "role": "facility_user"},
     ]
+    assert generated["tags"]["SB-01482-001"]["auto_tags"] == [
+        {"name": "data_admin"},
+        {"name": "12.3.2-staff"},
+    ]
+
+
+def test_build_generated_tag_definitions_staff_group_in_auto_tags(
+    tmp_path: Path,
+) -> None:
+    esaf_db_path = tmp_path / "esafs.sqlite3"
+    template_path = tmp_path / "tag_definitions_stub.yaml"
+
+    template_path.write_text(
+        """
+roles:
+  facility_user:
+    scopes:
+      - read:data
+      - read:metadata
+tags: {}
+tag_owners: {}
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    esaf = {
+        "Beamline": "12.3.2",
+        "Description": "Microdiffraction of ARPES samples",
+        "EsafFriendlyId": "SB-01482-001",
+        "EsafId": 36017,
+        "ExpLead": {
+            "Alsid": 83512,
+            "Email": "chu2@lbl.gov",
+            "LbnlId": "070285",
+            "Name": "Cheng Hu",
+            "Orcid": "0000-0003-2335-7806",
+        },
+        "IsExportControlled": "No",
+        "Materials": [],
+        "PI": {
+            "Alsid": 11525,
+            "Email": "erotenberg@lbl.gov",
+            "LbnlId": "275451",
+            "Name": "Eli Rotenberg",
+            "Orcid": "0000-0002-3979-8844",
+        },
+        "Participants": [],
+        "ProposalFriendlyId": "ALS-13362",
+        "ProposalId": 19907,
+        "ScheduledEvents": [],
+        "Status": "Draft",
+        "Title": "Microdiffraction of ARPES samples",
+        "Version": 1,
+    }
+
+    with sqlite3.connect(esaf_db_path) as connection:
+        ensure_schema(connection)
+        sync_beamline(
+            connection,
+            beamline="12.3.2",
+            esafs=[esaf],
+            synced_at="2026-04-04T00:00:00+00:00",
+        )
+
+    generated = build_generated_tag_definitions(esaf_db_path, template_path)
+
+    assert generated["tags"]["SB-01482-001"]["auto_tags"] == [
+        {"name": "data_admin"},
+        {"name": "12.3.2-staff"},
+    ]
 
 
 def test_build_group_parser_includes_empty_beamline_staff_groups(
@@ -293,3 +364,124 @@ def test_build_group_parser_includes_empty_beamline_staff_groups(
         "0000-0003-2335-7806",
     ]
     assert group_parser("12.3.2-staff") == []
+
+
+def test_compile_tags_reflects_roles_and_data_admin_in_sqlite(
+    tmp_path: Path,
+) -> None:
+    esaf_db_path = tmp_path / "esafs.sqlite3"
+    template_path = tmp_path / "tag_definitions_stub.yaml"
+    generated_yaml_path = tmp_path / "tag_definitions.generated.yml"
+    compiled_db_path = tmp_path / "compiled_tags.sqlite"
+
+    template_path.write_text(
+        """
+roles:
+  facility_user:
+    scopes:
+      - read:data
+      - read:metadata
+  facility_admin:
+    scopes:
+      - read:data
+      - read:metadata
+      - write:data
+      - write:metadata
+      - delete:node
+      - delete:revision
+      - create:node
+      - register
+tags:
+  data_admin:
+    users:
+      - name: "0000-0001-0000-0001"
+        role: facility_admin
+tag_owners: {}
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    esaf = {
+        "Beamline": "12.3.2",
+        "Description": "Test ESAF",
+        "EsafFriendlyId": "SB-01482-001",
+        "EsafId": 36017,
+        "ExpLead": {
+            "Alsid": 83512,
+            "Email": "chu2@lbl.gov",
+            "LbnlId": "070285",
+            "Name": "Cheng Hu",
+            "Orcid": "0000-0003-2335-7806",
+        },
+        "IsExportControlled": "No",
+        "Materials": [],
+        "PI": {
+            "Alsid": 11525,
+            "Email": "erotenberg@lbl.gov",
+            "LbnlId": "275451",
+            "Name": "Eli Rotenberg",
+            "Orcid": "0000-0002-3979-8844",
+        },
+        "Participants": [],
+        "ProposalFriendlyId": "ALS-13362",
+        "ProposalId": 19907,
+        "ScheduledEvents": [],
+        "Status": "Draft",
+        "Title": "Test ESAF",
+        "Version": 1,
+    }
+
+    with sqlite3.connect(esaf_db_path) as connection:
+        ensure_schema(connection)
+        sync_beamline(
+            connection,
+            beamline="12.3.2",
+            esafs=[esaf],
+            synced_at="2026-04-04T00:00:00+00:00",
+        )
+
+    compile_tags(
+        output_sqlite_path=compiled_db_path,
+        esaf_db_path=esaf_db_path,
+        tag_definitions_path=template_path,
+        generated_tag_definitions_path=generated_yaml_path,
+    )
+
+    with sqlite3.connect(compiled_db_path) as con:
+        cur = con.cursor()
+
+        # data_admin tag exists in the compiled database
+        cur.execute("SELECT id FROM tags WHERE name = 'data_admin'")
+        data_admin_row = cur.fetchone()
+        assert data_admin_row is not None, "data_admin tag not found in compiled DB"
+        data_admin_id = data_admin_row[0]
+
+        # the data_admin user is associated with data_admin and has facility_admin scopes
+        cur.execute(
+            """
+            SELECT s.name FROM tags_users_scopes tus
+            JOIN users u ON u.id = tus.user_id
+            JOIN scopes s ON s.id = tus.scope_id
+            WHERE tus.tag_id = ? AND u.name = '0000-0001-0000-0001'
+            ORDER BY s.name
+            """,
+            (data_admin_id,),
+        )
+        admin_scopes = {row[0] for row in cur.fetchall()}
+        assert "read:data" in admin_scopes
+        assert "write:data" in admin_scopes
+        assert "create:node" in admin_scopes
+        assert "delete:node" in admin_scopes
+
+        # facility_user scopes are present in the DB (used by ESAF and staff tags)
+        cur.execute("SELECT name FROM scopes ORDER BY name")
+        all_scopes = {row[0] for row in cur.fetchall()}
+        assert "read:data" in all_scopes
+        assert "read:metadata" in all_scopes
+
+        # the data_admin user does NOT have facility_user-only read:data access
+        # on the ESAF tag (it gets access via auto_tag, not direct membership)
+        cur.execute("SELECT id FROM tags WHERE name = 'SB-01482-001'")
+        assert (
+            cur.fetchone() is not None
+        ), "SB-01482-001 ESAF tag not found in compiled DB"

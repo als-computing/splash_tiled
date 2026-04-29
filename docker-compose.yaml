@@ -1,0 +1,81 @@
+services:
+  tiled:
+    build:
+      context: .
+      dockerfile: Containerfile
+      security_opt:
+        - label=disable
+    userns_mode: keep-id
+    env_file:
+      - .env
+    user: "${UID:-1000}:${GID:-1000}"
+    security_opt:  #  for podman on SELinux systems, may be ignored in other environments
+      - label=disable
+    command:
+      - bash
+      - /app/scripts/tiled_start.sh
+      - /tiled_deploy/config
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data:rw,Z
+      - ./tags:/app/tags:rw,Z
+      - ./tiled_config/config.yaml:/tiled_deploy/config/config.yaml:ro
+    restart: unless-stopped
+
+  sync-worker:
+    build:
+      context: .
+      dockerfile: Containerfile
+      security_opt:
+        - label=disable
+    userns_mode: keep-id
+    user: "${UID:-1000}:${GID:-1000}"
+    security_opt:
+      - label=disable
+    command:
+      - bash
+      - /app/scripts/sync_loop.sh
+    environment:
+      SYNC_CRON: "*/5 * * * *"
+      BEAMLINES: "12.3.2,9.3.2,7.0.2"
+      ESAF_DB_PATH: /app/data/esafs.sqlite3
+      COMPILED_TAGS_DB: /app/data/compiled_tags.sqlite
+      GENERATED_TAGS_YAML: /app/data/tag_definitions.generated.yml
+      TAGS_TEMPLATE: /app/src/splash_tiled/access_control/tag_definitions_stub.yaml
+    volumes:
+      - ./data:/app/data:rw,Z
+    depends_on:
+      - tiled
+    restart: unless-stopped
+
+  seed-data:
+    build:
+      context: .
+      dockerfile: Containerfile
+      security_opt:
+        - label=disable
+    userns_mode: keep-id
+    user: "${UID:-1000}:${GID:-1000}"
+    security_opt:
+      - label=disable
+    command:
+      - python
+      - /app/scripts/seed_dev_catalog.py
+      - --uri
+      - http://tiled:8000
+      - --wait-seconds
+      - "90"
+    volumes:
+      - ./data:/app/data:rw,Z
+      - ./tags:/app/tags:ro,Z
+    depends_on:
+      - tiled
+    environment:
+      ALICE_PASSWORD: ${ALICE_PASSWORD}
+      COMPILED_TAGS_DB: /app/data/compiled_tags.sqlite
+    restart: "no"

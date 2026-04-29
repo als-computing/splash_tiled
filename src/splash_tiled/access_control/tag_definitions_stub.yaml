@@ -6,19 +6,9 @@ roles:
              "write:data", "write:metadata",
              "delete:node", "delete:revision",
              "create:node", "register"]
-tags:
-  SB-01482-001:
-    groups:
-      - name: SB-01482-001
-        role: facility_user
-    auto_tags:
-      - name: data_admin
 
+tags:
   data_admin:
     users:
-      - name: cara
+      - name: 0000-0002-1539-0297  #dylan
         role: facility_admin
-tag_owners:
-  data_admin:
-    users:
-      - name: cara

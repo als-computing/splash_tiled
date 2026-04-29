@@ -182,4 +182,9 @@ ehthumbs.db
 *.nc
 *.zarr/
 *.sqlite3
+*.sqlite
+*.db
+*.sqlite-*
+*.sqlite3-*
 tag_definitions.generated.yml
+data/

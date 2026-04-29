@@ -294,6 +294,9 @@ def fetch_beamline_staff(
     response = client.get(api_url, params={"bl": "all"})
     response.raise_for_status()
     payload = response.json()
+    # API returns {"Beamlines": [...]} wrapper
+    if isinstance(payload, dict) and "Beamlines" in payload:
+        payload = payload["Beamlines"]
     if not isinstance(payload, list):
         raise ValueError(
             f"Expected list response from staff API, got {type(payload)!r}"
