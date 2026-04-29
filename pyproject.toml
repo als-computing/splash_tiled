@@ -43,6 +43,7 @@ dev = [
   "mypy",
   "pytest",
   "pytest-cov",
+  "fabio",
 ]
 
 [project.urls]
