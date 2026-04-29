@@ -53,6 +53,23 @@ services:
       - tiled
     restart: unless-stopped
 
+  access-ctl:
+    build:
+      context: .
+      dockerfile: Containerfile
+      security_opt:
+        - label=disable
+    userns_mode: keep-id
+    user: "${UID:-1000}:${GID:-1000}"
+    security_opt:
+      - label=disable
+    entrypoint: ["access"]
+    volumes:
+      - ./tags:/app/tags:rw,Z
+    profiles:
+      - access
+    restart: "no"
+
   seed-data:
     build:
       context: .

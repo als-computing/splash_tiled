@@ -46,6 +46,8 @@ Documentation = "https://github.com/als-lbl/splash_tiled#readme"
 als-tiled = "splash_tiled.main:main"
 als-hub = "splash_tiled.access_control.user_office:main"
 compile-tags = "splash_tiled.access_control.tiled_tags:main"
+access-query = "splash_tiled.access_control.inspect:main"
+access = "splash_tiled.access_control.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

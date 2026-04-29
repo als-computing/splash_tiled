@@ -188,3 +188,4 @@ ehthumbs.db
 *.sqlite3-*
 tag_definitions.generated.yml
 data/
+tags/

@@ -132,72 +132,58 @@ node tagged with SB-01482-001
 
 ---
 
+## The `access` CLI
+
+All compile and query operations are available through the `access` command.
+
+```
+access compile all            # sync User Office APIs then compile tags
+access compile useroffice     # sync User Office APIs only (writes esafs.db)
+access compile compiled-tags  # compile tags from existing esafs.db
+
+access query beamlines
+access query proposals [--beamline 12.3.2] [--proposal SB]
+access query esaf    [--beamline 12.3.2] [--proposal SB]
+access query proposal-members <esaf-friendly-id>
+access query beamline-members <beamline>
+access query user-proposals   <orcid>
+access query user-beamlines   <orcid>
+access query tags             <orcid>
+```
+
+All compile subcommands default to `tags/esafs.db` and `tags/compiled_tags.db`.
+All query subcommands default to `--db-path tags/esafs.db` and
+`--compiled-db tags/compiled_tags.db`.
+
+### Running from a container
+
+The `access-ctl` service is defined in `docker-compose.yaml` with
+`profiles: [access]` so it never starts automatically. Use
+`docker compose run` to invoke it on demand:
+
+```bash
+docker compose run --rm access-ctl compile all
+docker compose run --rm access-ctl query beamline-members 12.3.2
+docker compose run --rm access-ctl query tags 0000-0002-3979-8844
+```
+
+---
+
 ## How to run an update
 
 Updates are normally performed automatically by the `sync-worker` container on the
-schedule configured by `SYNC_CRON`. The steps below show how to trigger a manual
-update from the host or inside a container.
-
-### Step 1 — Sync ESAFs and staff from the User Office API
+schedule configured by `SYNC_CRON`. To trigger a manual update from the host:
 
 ```bash
-python -m splash_tiled.access_control.user_office \
-    --beamline 12.3.2 --beamline 9.3.2 --beamline 7.0.2 \
-    --db-path data/esafs.db \
-    --api-url https://als-esaf.als.lbl.gov/EsafInformation/GetEsaf
+# Full update: sync User Office APIs then compile tags
+access compile all
+
+# Or as two separate steps:
+access compile useroffice
+access compile compiled-tags
 ```
-
-Use `--all` instead of individual `--beamline` flags to sync every beamline. This
-writes ESAF and staff records to `esafs.db`.
-
-### Step 2 — Compile tags
-
-```bash
-python -m splash_tiled.access_control.tiled_tags compile \
-    --esaf-sqlite-path    data/esafs.db \
-    --tag-definitions-path src/splash_tiled/access_control/tag_definitions_stub.yaml \
-    --generated-yaml-path data/tag_definitions.generated.yml \
-    --output-sqlite-path  data/compiled_tags.db
-```
-
-This command:
-1. Reads `esafs.db` to build per-ESAF and per-beamline-staff tags.
-2. Merges them with the static definitions in `tag_definitions_stub.yaml`.
-3. Writes the merged YAML to `tag_definitions.generated.yml` (useful for
-   inspection and debugging).
-4. Compiles the YAML into `compiled_tags.db`, resolving all group names to
-   ORCID lists.
 
 Tiled picks up the new `compiled_tags.db` automatically — no restart needed.
-
-### Using podman-compose (inside the sync-worker container)
-
-```bash
-podman-compose run --rm --no-deps sync-worker \
-    python -m splash_tiled.access_control.tiled_tags compile \
-        --esaf-sqlite-path    /app/data/esafs.db \
-        --tag-definitions-path /app/src/splash_tiled/access_control/tag_definitions_stub.yaml \
-        --generated-yaml-path /app/data/tag_definitions.generated.yml \
-        --output-sqlite-path  /app/data/compiled_tags.db
-```
-
-### Verifying the result
-
-```bash
-# Check compiled staff tags
-sqlite3 data/compiled_tags.db \
-    "SELECT name FROM tags WHERE name LIKE '%-staff' ORDER BY name"
-
-# Count all compiled tags
-sqlite3 data/compiled_tags.db "SELECT COUNT(*) FROM tags"
-
-# Inspect a specific proposal's owners
-sqlite3 data/compiled_tags.db \
-    "SELECT u.name FROM tags t
-     JOIN tags_users_scopes tus ON tus.tag_id = t.id
-     JOIN users u ON u.id = tus.user_id
-     WHERE t.name = 'SB-01482-001' LIMIT 20"
-```
 
 ### Environment variables (sync-worker)
 

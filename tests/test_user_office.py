@@ -1,4 +1,5 @@
 import sqlite3
+from typing import Any
 
 from splash_tiled.access_control.user_office import (
     ensure_schema,
@@ -11,15 +12,22 @@ from splash_tiled.access_control.user_office import (
 )
 
 
-def test_user_key_falls_back_to_email() -> None:
+def test_user_key_uses_orcid() -> None:
     person = {
-        "Alsid": None,
-        "Email": "Scientist@LBL.GOV ",
-        "LbnlId": "Unknown",
         "Name": "Scientist Name",
+        "Orcid": "0000-0001-2345-6789",
     }
 
-    assert user_key(person) == "email:scientist@lbl.gov"
+    assert user_key(person) == "orcid:0000-0001-2345-6789"
+
+
+def test_user_key_falls_back_to_name() -> None:
+    person = {
+        "Name": "Scientist Name",
+        "Orcid": None,
+    }
+
+    assert user_key(person) == "name:scientist name"
 
 
 def test_sync_beamline_persists_normalized_records() -> None:
@@ -89,7 +97,11 @@ def test_sync_beamline_persists_normalized_records() -> None:
             "SELECT beamline_name, pi_user_key, exp_lead_user_key "
             "FROM esaf WHERE esaf_id = 36017"
         ).fetchone()
-        assert esaf_row == ("12.3.2", "alsid:11525", "alsid:83512")
+        assert esaf_row == (
+            "12.3.2",
+            "orcid:0000-0002-3979-8844",
+            "orcid:0000-0003-2335-7806",
+        )
 
         user_count = connection.execute("SELECT COUNT(*) FROM user").fetchone()[0]
         assert user_count == 2
@@ -99,10 +111,10 @@ def test_sync_beamline_persists_normalized_records() -> None:
             "ORDER BY role, user_key"
         ).fetchall()
         assert role_rows == [
-            ("alsid:83512", "exp_lead"),
-            ("alsid:11525", "participant"),
-            ("alsid:83512", "participant"),
-            ("alsid:11525", "pi"),
+            ("orcid:0000-0003-2335-7806", "exp_lead"),
+            ("orcid:0000-0002-3979-8844", "participant"),
+            ("orcid:0000-0003-2335-7806", "participant"),
+            ("orcid:0000-0002-3979-8844", "pi"),
         ]
 
 
@@ -169,21 +181,21 @@ def test_get_esaf_orcid_map_returns_distinct_orcids_per_esaf() -> None:
         }
 
 
-def test_sync_beamline_staff_groups_persists_email_members() -> None:
-    staff_payload = [
+def test_sync_beamline_staff_groups_persists_orcid_members() -> None:
+    staff_payload: list[dict[str, Any]] = [
         {
             "Beamline": "9.3.2",
             "Staff": [
-                {"Email": "ejcrumlin@lbl.gov"},
-                {"Email": "snemsak@lbl.gov"},
-                {"Email": "EJCRUMLIN@LBL.GOV"},
-                {"Email": "  "},
+                {"ORCID": "0000-0001-2345-6789"},
+                {"ORCID": "0000-0002-3456-7890"},
+                {"ORCID": "0000-0001-2345-6789"},  # duplicate
+                {"ORCID": None},  # no orcid — skipped
             ],
         },
         {
             "Beamline": "12.3.2",
             "Staff": [
-                {"Email": "mblum@lbl.gov"},
+                {"ORCID": "0000-0003-4567-8901"},
             ],
         },
     ]
@@ -195,6 +207,6 @@ def test_sync_beamline_staff_groups_persists_email_members() -> None:
         sync_beamline_staff_groups(connection, groups)
 
         assert get_beamline_staff_group_map(connection) == {
-            "12.3.2": ["mblum@lbl.gov"],
-            "9.3.2": ["ejcrumlin@lbl.gov", "snemsak@lbl.gov"],
+            "12.3.2": ["0000-0003-4567-8901"],
+            "9.3.2": ["0000-0001-2345-6789", "0000-0002-3456-7890"],
         }

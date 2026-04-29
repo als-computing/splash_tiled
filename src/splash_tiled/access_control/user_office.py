@@ -88,18 +88,6 @@ def normalize_text(value: Any) -> str | None:
     return text or None
 
 
-def normalize_email(value: Any) -> str | None:
-    text = normalize_text(value)
-    return text.lower() if text else None
-
-
-def normalize_lbnl_id(value: Any) -> str | None:
-    text = normalize_text(value)
-    if text and text.lower() != "unknown":
-        return text
-    return None
-
-
 def normalize_int(value: Any) -> int | None:
     if value in (None, ""):
         return None
@@ -107,17 +95,9 @@ def normalize_int(value: Any) -> int | None:
 
 
 def user_key(person: dict[str, Any]) -> str:
-    alsid = normalize_int(person.get("Alsid"))
-    if alsid is not None:
-        return f"alsid:{alsid}"
-
-    email = normalize_email(person.get("Email"))
-    if email:
-        return f"email:{email}"
-
-    lbnl_id = normalize_lbnl_id(person.get("LbnlId"))
-    if lbnl_id:
-        return f"lbnl:{lbnl_id}"
+    orcid = normalize_text(person.get("Orcid"))
+    if orcid is not None:
+        return f"orcid:{orcid}"
 
     name = normalize_text(person.get("Name"))
     if name:
@@ -138,9 +118,6 @@ def ensure_schema(connection: sqlite3.Connection) -> None:
 
         CREATE TABLE IF NOT EXISTS user (
             user_key TEXT PRIMARY KEY,
-            alsid INTEGER,
-            email TEXT,
-            lbnl_id TEXT,
             name TEXT,
             orcid TEXT
         );
@@ -160,7 +137,6 @@ def ensure_schema(connection: sqlite3.Connection) -> None:
             is_export_controlled TEXT,
             materials_json TEXT NOT NULL,
             scheduled_events_json TEXT NOT NULL,
-            raw_json TEXT NOT NULL,
             updated_at TEXT NOT NULL,
             FOREIGN KEY (beamline_name) REFERENCES beamline(name),
             FOREIGN KEY (pi_user_key) REFERENCES user(user_key),
@@ -307,11 +283,11 @@ def fetch_beamline_staff(
 def get_beamline_staff_groups(
     staff_data: list[dict[str, Any]],
 ) -> dict[str, list[str]]:
-    """Build a mapping of beamline name -> list of member emails.
+    """Build a mapping of beamline name -> list of member ORCIDs.
 
     Every person who appears in a beamline's Staff list is included as a
-    member of that beamline's group, identified by their (normalised) email
-    address.  Entries without a usable email are skipped.
+    member of that beamline's group, identified by their ORCID.
+    Entries without a usable ORCID are skipped.
     """
     groups: dict[str, list[str]] = {}
     for entry in staff_data:
@@ -320,11 +296,32 @@ def get_beamline_staff_groups(
             continue
         members: set[str] = set()
         for person in entry.get("Staff") or []:
-            email = normalize_email(person.get("Email"))
-            if email:
-                members.add(email)
+            orcid = normalize_text(person.get("ORCID"))
+            if orcid:
+                members.add(orcid)
         groups[beamline_name] = sorted(members)
     return groups
+
+
+def upsert_staff_users(
+    connection: sqlite3.Connection,
+    staff_data: list[dict[str, Any]],
+) -> None:
+    for entry in staff_data:
+        for person in entry.get("Staff") or []:
+            orcid = normalize_text(person.get("ORCID"))
+            if not orcid:
+                continue
+            connection.execute(
+                """
+                INSERT INTO user (user_key, name, orcid)
+                VALUES (?, ?, ?)
+                ON CONFLICT(user_key) DO UPDATE SET
+                    name = excluded.name,
+                    orcid = excluded.orcid
+                """,
+                (f"orcid:{orcid}", normalize_text(person.get("Name")), orcid),
+            )
 
 
 def sync_beamline_staff_groups(
@@ -427,20 +424,14 @@ def upsert_user(
     is_new = not user_exists(connection, key)
     connection.execute(
         """
-        INSERT INTO user (user_key, alsid, email, lbnl_id, name, orcid)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO user (user_key, name, orcid)
+        VALUES (?, ?, ?)
         ON CONFLICT(user_key) DO UPDATE SET
-            alsid = excluded.alsid,
-            email = excluded.email,
-            lbnl_id = excluded.lbnl_id,
             name = excluded.name,
             orcid = excluded.orcid
         """,
         (
             key,
-            normalize_int(person.get("Alsid")),
-            normalize_email(person.get("Email")),
-            normalize_lbnl_id(person.get("LbnlId")),
             normalize_text(person.get("Name")),
             normalize_text(person.get("Orcid")),
         ),
@@ -499,10 +490,9 @@ def sync_esaf(
             is_export_controlled,
             materials_json,
             scheduled_events_json,
-            raw_json,
             updated_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(esaf_id) DO UPDATE SET
             beamline_name = excluded.beamline_name,
             esaf_friendly_id = excluded.esaf_friendly_id,
@@ -517,7 +507,6 @@ def sync_esaf(
             is_export_controlled = excluded.is_export_controlled,
             materials_json = excluded.materials_json,
             scheduled_events_json = excluded.scheduled_events_json,
-            raw_json = excluded.raw_json,
             updated_at = excluded.updated_at
         """,
         (
@@ -535,7 +524,6 @@ def sync_esaf(
             normalize_text(esaf.get("IsExportControlled")),
             json.dumps(esaf.get("Materials") or []),
             json.dumps(esaf.get("ScheduledEvents") or []),
-            json.dumps(esaf, sort_keys=True),
             synced_at,
         ),
     )
@@ -609,6 +597,7 @@ def run(
                 staff_data = fetch_beamline_staff(client)
                 staff_groups = get_beamline_staff_groups(staff_data)
                 sync_beamline_staff_groups(connection, staff_groups)
+                upsert_staff_users(connection, staff_data)
                 typer.echo(
                     "Stored beamline staff groups " f"for {len(staff_groups)} beamlines"
                 )
