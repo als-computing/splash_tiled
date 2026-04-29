@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 from collections.abc import Iterable
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
@@ -15,6 +17,7 @@ import typer
 
 DEFAULT_API_URL = "https://als-esaf.als.lbl.gov/EsafInformation/GetEsaf"
 DEFAULT_STAFF_API_URL = "https://alsusweb.lbl.gov/GetStaffByBeamline/"
+DEFAULT_PROPOSALS_BY_BL_URL = "https://alsusweb.lbl.gov/ALSUserProposalsByBL/"
 
 
 class Beamline(StrEnum):
@@ -159,6 +162,23 @@ def ensure_schema(connection: sqlite3.Connection) -> None:
             PRIMARY KEY (beamline_name, user_name)
         );
 
+        CREATE TABLE IF NOT EXISTS proposal (
+            proposal_friendly_id TEXT PRIMARY KEY,
+            title TEXT,
+            abstract TEXT,
+            updated_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS proposal_user (
+            proposal_friendly_id TEXT NOT NULL,
+            user_key TEXT NOT NULL,
+            role TEXT NOT NULL,
+            PRIMARY KEY (proposal_friendly_id, user_key, role),
+            FOREIGN KEY (proposal_friendly_id) REFERENCES proposal(proposal_friendly_id) ON DELETE CASCADE,
+            FOREIGN KEY (user_key) REFERENCES user(user_key),
+            CHECK (role IN ('pi', 'exp_lead'))
+        );
+
         CREATE INDEX IF NOT EXISTS idx_esaf_beamline_name
         ON esaf (beamline_name);
 
@@ -222,9 +242,11 @@ def collect_esaf_user_keys(esaf: dict[str, Any]) -> set[str]:
     return user_keys
 
 
-def format_report_table(rows: list[dict[str, str]]) -> str:
-    headers = ["Beamline", "ESAFs", "New ESAFs", "Users", "New Users", "Error"]
-    keys = ["beamline", "esafs", "new_esafs", "users", "new_users", "error"]
+def format_table(
+    rows: list[dict[str, str]],
+    headers: list[str],
+    keys: list[str],
+) -> str:
     widths = {
         header: max(
             len(header),
@@ -250,6 +272,22 @@ def format_report_table(rows: list[dict[str, str]]) -> str:
     return "\n".join(lines)
 
 
+def format_report_table(rows: list[dict[str, str]]) -> str:
+    return format_table(
+        rows,
+        headers=["Beamline", "ESAFs", "New ESAFs", "Users", "New Users", "Error"],
+        keys=["beamline", "esafs", "new_esafs", "users", "new_users", "error"],
+    )
+
+
+def format_proposals_report_table(rows: list[dict[str, str]]) -> str:
+    return format_table(
+        rows,
+        headers=["Beamline", "Proposals", "New Proposals", "New Users", "Error"],
+        keys=["beamline", "proposals", "new_proposals", "new_users", "error"],
+    )
+
+
 def print_report(rows: list[dict[str, str]], elapsed_seconds: float) -> None:
     if not rows:
         return
@@ -257,6 +295,13 @@ def print_report(rows: list[dict[str, str]], elapsed_seconds: float) -> None:
     typer.echo("\nBeamline sync report:")
     typer.echo(format_report_table(rows))
     typer.echo(f"Total time: {elapsed_seconds:.2f} seconds")
+
+
+def print_proposals_report(rows: list[dict[str, str]]) -> None:
+    if not rows:
+        return
+    typer.echo("\nProposal sync report:")
+    typer.echo(format_proposals_report_table(rows))
 
 
 def fetch_beamline_staff(
@@ -340,6 +385,129 @@ def sync_beamline_staff_groups(
     )
 
 
+_INVALID_ESCAPE_RE = re.compile(r'\\([^"\\/bfnrtu\n])')
+
+
+def _fix_json_escapes(text: str) -> str:
+    """Replace invalid JSON escape sequences with escaped backslashes."""
+    return _INVALID_ESCAPE_RE.sub(r"\\\\\1", text)
+
+
+def fetch_proposals_by_beamline(
+    client: httpx.Client,
+    beamline: str,
+    api_url: str,
+) -> list[dict[str, Any]]:
+    """Return all proposal records for a beamline."""
+    response = client.get(api_url, params={"bl": beamline}, timeout=120.0)
+    response.raise_for_status()
+    try:
+        data = response.json()
+    except json.JSONDecodeError:
+        data = json.loads(_fix_json_escapes(response.text))
+    return [p for p in (data.get("Proposals") or []) if p.get("ExpID")]
+
+
+def sync_proposal(
+    connection: sqlite3.Connection,
+    proposal_data: dict[str, Any],
+    synced_at: str,
+) -> bool:
+    proposal_friendly_id = normalize_text(proposal_data.get("ExpID"))
+    if not proposal_friendly_id:
+        raise ValueError("Proposal payload is missing ExpID")
+
+    is_new = not connection.execute(
+        "SELECT 1 FROM proposal WHERE proposal_friendly_id = ?", (proposal_friendly_id,)
+    ).fetchone()
+
+    connection.execute(
+        """
+        INSERT INTO proposal (proposal_friendly_id, title, abstract, updated_at)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(proposal_friendly_id) DO UPDATE SET
+            abstract = excluded.abstract,
+            updated_at = excluded.updated_at
+        """,
+        (
+            proposal_friendly_id,
+            None,
+            normalize_text(proposal_data.get("Abstract")),
+            synced_at,
+        ),
+    )
+    return is_new
+
+
+def sync_proposals(
+    connection: sqlite3.Connection,
+    client: httpx.Client,
+    beamlines: list[str],
+    proposals_by_bl_url: str,
+    synced_at: str,
+) -> tuple[int, int]:
+    beamline_proposals: dict[str, list[dict[str, Any]]] = {}
+    beamline_errors: dict[str, str] = {}
+
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = {
+            executor.submit(
+                fetch_proposals_by_beamline, client, bl, proposals_by_bl_url
+            ): bl
+            for bl in beamlines
+        }
+        for future in as_completed(futures):
+            bl = futures[future]
+            try:
+                proposals = future.result()
+                beamline_proposals[bl] = proposals
+                typer.echo(f"Stored {len(proposals)} proposals for {bl}")
+            except httpx.HTTPStatusError as error:
+                if error.response.status_code != 404:
+                    msg = format_http_error(error)
+                    beamline_errors[bl] = msg
+                    typer.echo(f"Error fetching proposals for {bl}: {msg}", err=True)
+            except (httpx.HTTPError, ValueError) as error:
+                beamline_errors[bl] = str(error)
+                typer.echo(f"Error fetching proposals for {bl}: {error}", err=True)
+
+    # Deduplicate across beamlines, write to DB
+    seen: set[str] = set()
+    new_count = 0
+    for proposals in beamline_proposals.values():
+        for proposal_data in proposals:
+            pid = proposal_data.get("ExpID", "")
+            if pid in seen:
+                continue
+            seen.add(pid)
+            try:
+                if sync_proposal(connection, proposal_data, synced_at):
+                    new_count += 1
+            except ValueError as error:
+                typer.echo(f"Error syncing proposal {pid}: {error}", err=True)
+
+    total = len(seen)
+    typer.echo(
+        f"Synced {total} proposals ({new_count} new) across {len(beamline_proposals)} beamlines"
+    )
+
+    report_rows = []
+    for bl in sorted(beamlines):
+        proposals = beamline_proposals.get(bl, [])
+        report_rows.append(
+            {
+                "beamline": bl,
+                "proposals": str(len(proposals)),
+                "new_proposals": "",
+                "new_users": "",
+                "error": beamline_errors.get(bl, ""),
+            }
+        )
+    print_proposals_report(report_rows)
+
+    return total, new_count
+
+
 def get_beamline_staff_group_map(
     connection: sqlite3.Connection,
 ) -> dict[str, list[str]]:
@@ -371,6 +539,47 @@ def get_esaf_orcid_map(connection: sqlite3.Connection) -> dict[str, list[str]]:
         if orcid is not None:
             values.append(orcid)
     return orcid_map
+
+
+def get_proposal_orcid_map(connection: sqlite3.Connection) -> dict[str, list[str]]:
+    rows = connection.execute("""
+        SELECT DISTINCT proposal_friendly_id, orcid FROM (
+            SELECT pu.proposal_friendly_id, u.orcid
+            FROM proposal_user pu
+            JOIN user u ON u.user_key = pu.user_key
+            WHERE u.orcid IS NOT NULL
+
+            UNION
+
+            SELECT e.proposal_friendly_id, u.orcid
+            FROM esaf e
+            JOIN esaf_user eu ON eu.esaf_id = e.esaf_id
+            JOIN user u ON u.user_key = eu.user_key
+            WHERE e.proposal_friendly_id IS NOT NULL
+            AND u.orcid IS NOT NULL
+        )
+        ORDER BY proposal_friendly_id, orcid
+        """).fetchall()
+
+    orcid_map: dict[str, list[str]] = {}
+    for proposal_friendly_id, orcid in rows:
+        orcid_map.setdefault(proposal_friendly_id, []).append(orcid)
+    return orcid_map
+
+
+def get_beamlines_by_proposal(connection: sqlite3.Connection) -> dict[str, list[str]]:
+    rows = connection.execute("""
+        SELECT DISTINCT proposal_friendly_id, beamline_name
+        FROM esaf
+        WHERE proposal_friendly_id IS NOT NULL
+        AND beamline_name IS NOT NULL
+        ORDER BY proposal_friendly_id, beamline_name
+        """).fetchall()
+
+    beamlines_by_proposal: dict[str, list[str]] = {}
+    for proposal_friendly_id, beamline_name in rows:
+        beamlines_by_proposal.setdefault(proposal_friendly_id, []).append(beamline_name)
+    return beamlines_by_proposal
 
 
 def get_esaf_friendly_ids(connection: sqlite3.Connection) -> list[str]:
@@ -582,6 +791,7 @@ def run(
     beamlines: list[str],
     db_path: Path,
     api_url: str = DEFAULT_API_URL,
+    proposals_by_bl_url: str = DEFAULT_PROPOSALS_BY_BL_URL,
     timeout: float = 30.0,
 ) -> int:
     start_time = perf_counter()
@@ -651,6 +861,10 @@ def run(
                                 "error": "",
                             }
                         )
+                synced_at = utc_now()
+                sync_proposals(
+                    connection, client, beamlines, proposals_by_bl_url, synced_at
+                )
             except KeyboardInterrupt:
                 interrupted = True
             finally:
@@ -706,6 +920,11 @@ def cli(
         "--api-url",
         help="ESAF API base URL.",
     ),
+    proposals_by_bl_url: str = typer.Option(
+        DEFAULT_PROPOSALS_BY_BL_URL,
+        "--proposals-by-bl-url",
+        help="Proposals-by-beamline API base URL.",
+    ),
     timeout: float = typer.Option(
         30.0,
         "--timeout",
@@ -718,6 +937,7 @@ def cli(
             beamlines=resolved_beamlines,
             db_path=db_path,
             api_url=api_url,
+            proposals_by_bl_url=proposals_by_bl_url,
             timeout=timeout,
         )
     )

@@ -10,8 +10,10 @@ from tiled.access_control.scopes import ALL_SCOPES
 
 from splash_tiled.access_control.user_office import (
     get_beamline_staff_group_map,
+    get_beamlines_by_proposal,
     get_esaf_friendly_ids_by_beamline,
     get_esaf_orcid_map,
+    get_proposal_orcid_map,
 )
 
 app = typer.Typer(add_completion=False)
@@ -36,6 +38,7 @@ def get_default_generated_tag_definitions_path() -> Path:
 def load_esaf_groups(esaf_db_path: Path) -> dict[str, list[str]]:
     with sqlite3.connect(esaf_db_path) as connection:
         groups = get_esaf_orcid_map(connection)
+        groups.update(get_proposal_orcid_map(connection))
         beamline_staff_groups = get_beamline_staff_group_map(connection)
         for beamline_name in get_esaf_friendly_ids_by_beamline(connection):
             groups[f"{beamline_name}-staff"] = beamline_staff_groups.get(
@@ -65,12 +68,14 @@ def build_generated_tag_definitions(
     with sqlite3.connect(esaf_db_path) as connection:
         esaf_ids_by_beamline = get_esaf_friendly_ids_by_beamline(connection)
         beamline_staff_groups = get_beamline_staff_group_map(connection)
+        beamlines_by_proposal = get_beamlines_by_proposal(connection)
 
     esaf_friendly_id_set = {
         esaf_friendly_id
         for esaf_friendly_ids in esaf_ids_by_beamline.values()
         for esaf_friendly_id in esaf_friendly_ids
     }
+    proposal_friendly_id_set = set(beamlines_by_proposal.keys())
 
     template_tags = template.get("tags") or {}
     if not isinstance(template_tags, dict):
@@ -82,7 +87,7 @@ def build_generated_tag_definitions(
     generated_tags = {
         name: value
         for name, value in template_tags.items()
-        if name not in esaf_friendly_id_set
+        if name not in esaf_friendly_id_set and name not in proposal_friendly_id_set
     }
 
     for beamline_name, esaf_friendly_ids in esaf_ids_by_beamline.items():
@@ -122,6 +127,20 @@ def build_generated_tag_definitions(
                     {"name": beamline_staff_group_name},
                 ],
             }
+
+    for proposal_friendly_id, beamline_names in beamlines_by_proposal.items():
+        proposal_groups = [{"name": proposal_friendly_id, "role": "facility_user"}]
+        proposal_auto_tags = [{"name": "data_admin"}]
+        for beamline_name in beamline_names:
+            beamline_staff_group_name = f"{beamline_name}-staff"
+            proposal_groups.append(
+                {"name": beamline_staff_group_name, "role": "facility_user"}
+            )
+            proposal_auto_tags.append({"name": beamline_staff_group_name})
+        generated_tags[proposal_friendly_id] = {
+            "groups": proposal_groups,
+            "auto_tags": proposal_auto_tags,
+        }
 
     return {
         "roles": template.get("roles") or {},
@@ -186,7 +205,7 @@ def build_group_parser(esaf_db_path: Path):
     groups = load_esaf_groups(esaf_db_path)
 
     def group_parser(groupname):
-        return groups[groupname]
+        return groups.get(groupname, [])
 
     return group_parser
 

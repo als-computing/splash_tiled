@@ -13,6 +13,7 @@ from splash_tiled.access_control.tiled_tags import (
 from splash_tiled.access_control.user_office import (
     ALL_BEAMLINES,
     DEFAULT_API_URL,
+    DEFAULT_PROPOSALS_BY_BL_URL,
     run,
 )
 
@@ -43,6 +44,11 @@ _TAG_DEFS = typer.Option(
     help="Tag definitions stub YAML. Defaults to the package stub.",
 )
 _API_URL = typer.Option(DEFAULT_API_URL, "--api-url", help="ESAF API base URL.")
+_PROPOSALS_BY_BL_URL = typer.Option(
+    DEFAULT_PROPOSALS_BY_BL_URL,
+    "--proposals-by-bl-url",
+    help="Proposals-by-beamline API base URL.",
+)
 _TIMEOUT = typer.Option(30.0, "--timeout", help="HTTP timeout in seconds.")
 
 
@@ -54,11 +60,18 @@ def _resolve_tag_defs(tag_definitions: Optional[Path]) -> Path:
 def compile_useroffice(
     esaf_db: Path = _ESAF_DB,
     api_url: str = _API_URL,
+    proposals_by_bl_url: str = _PROPOSALS_BY_BL_URL,
     timeout: float = _TIMEOUT,
 ) -> None:
     """Fetch all beamlines and staff from the User Office APIs into the ESAF database."""
     raise typer.Exit(
-        run(beamlines=ALL_BEAMLINES, db_path=esaf_db, api_url=api_url, timeout=timeout)
+        run(
+            beamlines=ALL_BEAMLINES,
+            db_path=esaf_db,
+            api_url=api_url,
+            proposals_by_bl_url=proposals_by_bl_url,
+            timeout=timeout,
+        )
     )
 
 
@@ -85,11 +98,16 @@ def compile_all(
     generated_yaml: Path = _GENERATED_YAML,
     tag_definitions: Optional[Path] = _TAG_DEFS,
     api_url: str = _API_URL,
+    proposals_by_bl_url: str = _PROPOSALS_BY_BL_URL,
     timeout: float = _TIMEOUT,
 ) -> None:
     """Fetch from User Office APIs then compile tags."""
     exit_code = run(
-        beamlines=ALL_BEAMLINES, db_path=esaf_db, api_url=api_url, timeout=timeout
+        beamlines=ALL_BEAMLINES,
+        db_path=esaf_db,
+        api_url=api_url,
+        proposals_by_bl_url=proposals_by_bl_url,
+        timeout=timeout,
     )
     if exit_code != 0:
         raise typer.Exit(exit_code)
