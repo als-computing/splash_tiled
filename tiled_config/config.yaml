@@ -29,7 +29,7 @@ access_control:
     - "create:node"
     - "register"
     tags_db:
-      uri: "/app/data/compiled_tags.sqlite"
+      uri: "/app/data/compiled_tags.db"
     access_tags_parser: "tiled.access_control.access_tags:AccessTagsParser"
 
 trees:

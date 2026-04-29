@@ -197,7 +197,7 @@ The repository includes a small CLI for loading ESAFs into SQLite.
 als-esaf-sync \
    --beamline 7.0.2 \
    --beamline 12.3.2 \
-   --db-path ./esafs.sqlite3
+   --db-path ./esafs.db
 ```
 
 The script stores data in four tables:

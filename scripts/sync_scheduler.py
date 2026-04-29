@@ -116,7 +116,7 @@ def main(
         "--esaf-db-path",
         help=(
             "Path to ESAF SQLite DB. If omitted, uses ESAF_DB_PATH "
-            "(default: /app/tags/esafs.sqlite3)."
+            "(default: /app/tags/esafs.db)."
         ),
     ),
     tags_template: Path | None = typer.Option(
@@ -142,7 +142,7 @@ def main(
         "--compiled-tags-db",
         help=(
             "Path to compiled tags SQLite DB. If omitted, uses "
-            "COMPILED_TAGS_DB (default: /app/tags/compiled_tags.sqlite)."
+            "COMPILED_TAGS_DB (default: /app/tags/compiled_tags.db)."
         ),
     ),
 ) -> None:
@@ -150,7 +150,7 @@ def main(
     resolved_esaf_db_path = resolve_path_option(
         esaf_db_path,
         env_name="ESAF_DB_PATH",
-        default="/app/tags/esafs.sqlite3",
+        default="/app/tags/esafs.db",
     )
     resolved_tags_template = resolve_path_option(
         tags_template,
@@ -165,7 +165,7 @@ def main(
     resolved_compiled_tags_db = resolve_path_option(
         compiled_tags_db,
         env_name="COMPILED_TAGS_DB",
-        default="/app/tags/compiled_tags.sqlite",
+        default="/app/tags/compiled_tags.db",
     )
     api_url = get_env(
         "API_URL",

@@ -28,9 +28,9 @@ def test_live_user_office_sync_compiles_stub_entries(tmp_path: Path) -> None:
         / "tag_definitions_stub.yaml"
     )
 
-    esaf_db_path = tmp_path / "esafs.sqlite3"
+    esaf_db_path = tmp_path / "esafs.db"
     generated_yaml_path = tmp_path / "tag_definitions.generated.yml"
-    compiled_db_path = tmp_path / "compiled_tags.sqlite"
+    compiled_db_path = tmp_path / "compiled_tags.db"
 
     beamline = "12.3.2"
     with httpx.Client(timeout=30.0, follow_redirects=True) as client:

@@ -259,7 +259,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--compiled-tags-db",
-        default=os.getenv("COMPILED_TAGS_DB", "/app/tags/compiled_tags.sqlite"),
+        default=os.getenv("COMPILED_TAGS_DB", "/app/tags/compiled_tags.db"),
         help="Path to compiled tags sqlite DB used to validate access tags.",
     )
     return parser.parse_args()

@@ -22,7 +22,7 @@ from splash_tiled.access_control.user_office import (
 
 
 def test_ensure_output_sqlite_path_creates_parent_and_file(tmp_path: Path) -> None:
-    output_path = tmp_path / "nested" / "compiled_tags.sqlite"
+    output_path = tmp_path / "nested" / "compiled_tags.db"
 
     resolved_path = ensure_output_sqlite_path(output_path)
 
@@ -42,7 +42,7 @@ def test_build_sqlite_uri_uses_absolute_sqlite_file_uri(tmp_path: Path) -> None:
 def test_ensure_output_sqlite_path_raises_for_unwritable_directory(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    output_path = tmp_path / "compiled_tags.sqlite"
+    output_path = tmp_path / "compiled_tags.db"
 
     def raise_permission_error(*args, **kwargs) -> None:
         raise PermissionError("permission denied")
@@ -56,7 +56,7 @@ def test_ensure_output_sqlite_path_raises_for_unwritable_directory(
 def test_build_generated_tag_definitions_includes_template_sections_and_esaf_tags(
     tmp_path: Path,
 ) -> None:
-    esaf_db_path = tmp_path / "esafs.sqlite3"
+    esaf_db_path = tmp_path / "esafs.db"
     template_path = tmp_path / "tag_definitions_stub.yaml"
 
     template_path.write_text(
@@ -166,7 +166,7 @@ def test_write_tag_definitions_yaml_writes_yaml_file(tmp_path: Path) -> None:
 def test_generate_tag_definitions_yaml_writes_generated_esaf_tags(
     tmp_path: Path,
 ) -> None:
-    esaf_db_path = tmp_path / "esafs.sqlite3"
+    esaf_db_path = tmp_path / "esafs.db"
     template_path = tmp_path / "tag_definitions_stub.yaml"
     output_yaml_path = tmp_path / "tag_definitions.generated.yml"
 
@@ -250,7 +250,7 @@ tag_owners:
 def test_build_generated_tag_definitions_staff_group_in_auto_tags(
     tmp_path: Path,
 ) -> None:
-    esaf_db_path = tmp_path / "esafs.sqlite3"
+    esaf_db_path = tmp_path / "esafs.db"
     template_path = tmp_path / "tag_definitions_stub.yaml"
 
     template_path.write_text(
@@ -316,7 +316,7 @@ tag_owners: {}
 def test_build_group_parser_includes_empty_beamline_staff_groups(
     tmp_path: Path,
 ) -> None:
-    esaf_db_path = tmp_path / "esafs.sqlite3"
+    esaf_db_path = tmp_path / "esafs.db"
 
     esaf = {
         "Beamline": "12.3.2",
@@ -369,10 +369,10 @@ def test_build_group_parser_includes_empty_beamline_staff_groups(
 def test_compile_tags_reflects_roles_and_data_admin_in_sqlite(
     tmp_path: Path,
 ) -> None:
-    esaf_db_path = tmp_path / "esafs.sqlite3"
+    esaf_db_path = tmp_path / "esafs.db"
     template_path = tmp_path / "tag_definitions_stub.yaml"
     generated_yaml_path = tmp_path / "tag_definitions.generated.yml"
-    compiled_db_path = tmp_path / "compiled_tags.sqlite"
+    compiled_db_path = tmp_path / "compiled_tags.db"
 
     template_path.write_text(
         """

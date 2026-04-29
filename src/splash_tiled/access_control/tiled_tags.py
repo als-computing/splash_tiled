@@ -18,11 +18,11 @@ app = typer.Typer(add_completion=False)
 
 
 def get_default_esaf_db_path() -> Path:
-    return Path(__file__).resolve().parents[3] / "esafs.sqlite3"
+    return Path(__file__).resolve().parents[3] / "esafs.db"
 
 
 def get_default_output_sqlite_path() -> Path:
-    return Path(__file__).resolve().parent / "compiled_tags.sqlite"
+    return Path(__file__).resolve().parent / "compiled_tags.db"
 
 
 def get_default_tag_definitions_path() -> Path:

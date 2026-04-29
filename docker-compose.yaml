@@ -43,8 +43,8 @@ services:
     environment:
       SYNC_CRON: "*/5 * * * *"
       BEAMLINES: "12.3.2,9.3.2,7.0.2"
-      ESAF_DB_PATH: /app/data/esafs.sqlite3
-      COMPILED_TAGS_DB: /app/data/compiled_tags.sqlite
+      ESAF_DB_PATH: /app/data/esafs.db
+      COMPILED_TAGS_DB: /app/data/compiled_tags.db
       GENERATED_TAGS_YAML: /app/data/tag_definitions.generated.yml
       TAGS_TEMPLATE: /app/src/splash_tiled/access_control/tag_definitions_stub.yaml
     volumes:
@@ -77,5 +77,5 @@ services:
       - tiled
     environment:
       ALICE_PASSWORD: ${ALICE_PASSWORD}
-      COMPILED_TAGS_DB: /app/data/compiled_tags.sqlite
+      COMPILED_TAGS_DB: /app/data/compiled_tags.db
     restart: "no"

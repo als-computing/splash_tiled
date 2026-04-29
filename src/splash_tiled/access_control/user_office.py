@@ -708,9 +708,9 @@ def cli(
         help="Sync every beamline defined in the Beamline enum.",
     ),
     db_path: Path = typer.Option(
-        Path("esafs.sqlite3"),
+        Path("esafs.db"),
         "--db-path",
-        help="SQLite database path. Defaults to ./esafs.sqlite3.",
+        help="SQLite database path. Defaults to ./esafs.db.",
     ),
     api_url: str = typer.Option(
         DEFAULT_API_URL,

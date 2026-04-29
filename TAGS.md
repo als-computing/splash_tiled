@@ -53,7 +53,7 @@ A set of principals that are allowed to *apply* a tag to a node. Defined in
 
 ### Compiled tags database
 
-`compiled_tags.sqlite` — the output of the `tiled_tags compile` command. It
+`compiled_tags.db` — the output of the `tiled_tags compile` command. It
 resolves every group name to a concrete list of user identities (ORCIDs) and stores
 the results in a form that Tiled can query at request time. Tiled reloads this file
 automatically; no server restart is required after a recompile.
@@ -143,56 +143,56 @@ update from the host or inside a container.
 ```bash
 python -m splash_tiled.access_control.user_office \
     --beamline 12.3.2 --beamline 9.3.2 --beamline 7.0.2 \
-    --db-path data/esafs.sqlite3 \
+    --db-path data/esafs.db \
     --api-url https://als-esaf.als.lbl.gov/EsafInformation/GetEsaf
 ```
 
 Use `--all` instead of individual `--beamline` flags to sync every beamline. This
-writes ESAF and staff records to `esafs.sqlite3`.
+writes ESAF and staff records to `esafs.db`.
 
 ### Step 2 — Compile tags
 
 ```bash
 python -m splash_tiled.access_control.tiled_tags compile \
-    --esaf-sqlite-path    data/esafs.sqlite3 \
+    --esaf-sqlite-path    data/esafs.db \
     --tag-definitions-path src/splash_tiled/access_control/tag_definitions_stub.yaml \
     --generated-yaml-path data/tag_definitions.generated.yml \
-    --output-sqlite-path  data/compiled_tags.sqlite
+    --output-sqlite-path  data/compiled_tags.db
 ```
 
 This command:
-1. Reads `esafs.sqlite3` to build per-ESAF and per-beamline-staff tags.
+1. Reads `esafs.db` to build per-ESAF and per-beamline-staff tags.
 2. Merges them with the static definitions in `tag_definitions_stub.yaml`.
 3. Writes the merged YAML to `tag_definitions.generated.yml` (useful for
    inspection and debugging).
-4. Compiles the YAML into `compiled_tags.sqlite`, resolving all group names to
+4. Compiles the YAML into `compiled_tags.db`, resolving all group names to
    ORCID lists.
 
-Tiled picks up the new `compiled_tags.sqlite` automatically — no restart needed.
+Tiled picks up the new `compiled_tags.db` automatically — no restart needed.
 
 ### Using podman-compose (inside the sync-worker container)
 
 ```bash
 podman-compose run --rm --no-deps sync-worker \
     python -m splash_tiled.access_control.tiled_tags compile \
-        --esaf-sqlite-path    /app/data/esafs.sqlite3 \
+        --esaf-sqlite-path    /app/data/esafs.db \
         --tag-definitions-path /app/src/splash_tiled/access_control/tag_definitions_stub.yaml \
         --generated-yaml-path /app/data/tag_definitions.generated.yml \
-        --output-sqlite-path  /app/data/compiled_tags.sqlite
+        --output-sqlite-path  /app/data/compiled_tags.db
 ```
 
 ### Verifying the result
 
 ```bash
 # Check compiled staff tags
-sqlite3 data/compiled_tags.sqlite \
+sqlite3 data/compiled_tags.db \
     "SELECT name FROM tags WHERE name LIKE '%-staff' ORDER BY name"
 
 # Count all compiled tags
-sqlite3 data/compiled_tags.sqlite "SELECT COUNT(*) FROM tags"
+sqlite3 data/compiled_tags.db "SELECT COUNT(*) FROM tags"
 
 # Inspect a specific proposal's owners
-sqlite3 data/compiled_tags.sqlite \
+sqlite3 data/compiled_tags.db \
     "SELECT u.name FROM tags t
      JOIN tags_users_scopes tus ON tus.tag_id = t.id
      JOIN users u ON u.id = tus.user_id
@@ -205,10 +205,10 @@ sqlite3 data/compiled_tags.sqlite \
 |---|---|---|
 | `SYNC_CRON` | — | Cron expression for automatic sync (required) |
 | `BEAMLINES` | `12.3.2,9.3.2,7.0.2` | Comma-separated beamline list, or `all` |
-| `ESAF_DB_PATH` | `/app/tags/esafs.sqlite3` | Path to the ESAF SQLite database |
+| `ESAF_DB_PATH` | `/app/tags/esafs.db` | Path to the ESAF SQLite database |
 | `TAGS_TEMPLATE` | `/app/src/.../tag_definitions_stub.yaml` | Static tag definitions template |
 | `GENERATED_TAGS_YAML` | `/app/tags/tag_definitions.generated.yml` | Generated YAML output path |
-| `COMPILED_TAGS_DB` | `/app/tags/compiled_tags.sqlite` | Compiled tags output path |
+| `COMPILED_TAGS_DB` | `/app/tags/compiled_tags.db` | Compiled tags output path |
 
 ---
 
