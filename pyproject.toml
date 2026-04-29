@@ -36,6 +36,12 @@ tiled-all = [
 bl733 = [
   "fabio",
 ]
+dev = [
+  "flake8",
+  "black",
+  "isort",
+  "mypy",
+]
 
 [project.urls]
 Homepage = "https://github.com/als-lbl/splash_tiled"
