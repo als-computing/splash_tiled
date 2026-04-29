@@ -38,6 +38,7 @@ fabio = "*"
 [tasks]
 test = "pytest --cov=splash_tiled --cov-report=term-missing"
 test_user_office = "pytest -m user_office"
+test_integration = "pytest tests/test_user_office_integration.py -v"
 lint = "flake8 src tests && black --check src tests && isort --check-only src tests && mypy src"
 format = "black src tests && isort src tests"
 als-hub = "als-hub --db-path ./esafs.db"

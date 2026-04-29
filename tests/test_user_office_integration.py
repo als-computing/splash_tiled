@@ -19,6 +19,21 @@ from splash_tiled.access_control.user_office import (
 
 @pytest.mark.user_office
 def test_live_user_office_sync_compiles_stub_entries(tmp_path: Path) -> None:
+    """Hit the live User Office API, sync ESAFs and beamline staff, compile tags, and verify the compiled DB.
+
+    Fetches real ESAF records for beamline 12.3.2 and the full beamline-staff
+    payload, writes them into a fresh SQLite DB, then runs compile_tags against
+    the repo's tag_definitions_stub.yaml.  Asserts that:
+
+    - The compiled DB contains a 'data_admin' tag matching the stub definition.
+    - All scopes declared for the 'facility_admin' and 'facility_user' roles in
+      the stub are present in the compiled scopes table.
+    - Every user listed under 'data_admin' in the stub has been granted at least
+      the full set of 'facility_admin' scopes in the compiled tags_users_scopes
+      table.
+
+    Skipped automatically if the User Office API is unreachable.
+    """
     repo_root = Path(__file__).resolve().parents[1]
     stub_path = (
         repo_root
