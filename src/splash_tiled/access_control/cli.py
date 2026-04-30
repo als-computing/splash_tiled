@@ -121,7 +121,7 @@ def compile_all(
 
 
 def _tag_recursive(node, tags: list[str]) -> int:
-    node.access_blob(access_tag=tags)
+    node.replace_metadata(access_tags=tags)
     count = 1
     try:
         for key in node:
