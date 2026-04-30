@@ -255,39 +255,77 @@ def beamline_members(
 
 @app.command("tags")
 def tags(
-    orcid: Annotated[str, typer.Argument(help="User ORCID.")],
+    orcid: Annotated[
+        Optional[str], typer.Argument(help="User ORCID. If omitted, lists all tags.")
+    ] = None,
+    like: Optional[str] = typer.Option(
+        None,
+        "--like",
+        help="Filter tag names with SQL LIKE pattern. Use % for any"
+        "sequence (e.g. '%SB-01510-001%') and _ for a single character. Not regex.",
+    ),
     compiled_db: Path = _COMPILED_DB_OPTION,
 ) -> None:
-    """List all tags a user has access to, with their scopes."""
+    """List tags. With an ORCID, shows that user's tags with scopes and ownership.
+    Without an ORCID, lists all tags with an optional --like filter."""
     with _connect(compiled_db) as conn:
-        rows = conn.execute(
-            """
-            SELECT t.name,
-                   t.is_public,
-                   GROUP_CONCAT(s.name, ', ') AS scopes,
-                   EXISTS (
-                       SELECT 1 FROM tag_owners towner
-                       WHERE towner.tag_id = t.id AND towner.user_id = u.id
-                   ) AS is_owner
-            FROM tags t
-            JOIN tags_users_scopes tus ON tus.tag_id = t.id
-            JOIN users u ON u.id = tus.user_id
-            JOIN scopes s ON s.id = tus.scope_id
-            WHERE u.name = ?
-            GROUP BY t.name
-            ORDER BY t.name
-            """,
-            (orcid,),
-        ).fetchall()
-    if not rows:
-        typer.echo(f"No tags found for {orcid}")
-        return
-    typer.echo(f"{'TAG':<40} {'PUBLIC':<8} {'OWNER':<8} SCOPES")
-    typer.echo("-" * 90)
-    for tag, is_public, scopes, is_owner in rows:
-        typer.echo(
-            f"{tag:<40} {'yes' if is_public else 'no':<8} {'yes' if is_owner else 'no':<8} {scopes or ''}"
-        )
+        if orcid is not None:
+            rows = conn.execute(
+                """
+                SELECT t.name,
+                       t.is_public,
+                       GROUP_CONCAT(s.name, ', ') AS scopes,
+                       EXISTS (
+                           SELECT 1 FROM tag_owners towner
+                           WHERE towner.tag_id = t.id AND towner.user_id = u.id
+                       ) AS is_owner
+                FROM tags t
+                JOIN tags_users_scopes tus ON tus.tag_id = t.id
+                JOIN users u ON u.id = tus.user_id
+                JOIN scopes s ON s.id = tus.scope_id
+                WHERE u.name = ?
+                GROUP BY t.name
+                ORDER BY t.name
+                """,
+                (orcid,),
+            ).fetchall()
+            if not rows:
+                typer.echo(f"No tags found for {orcid}")
+                return
+            typer.echo(f"{'TAG':<40} {'PUBLIC':<8} {'OWNER':<8} SCOPES")
+            typer.echo("-" * 90)
+            for tag, is_public, scopes, is_owner in rows:
+                typer.echo(
+                    f"{tag:<40} {'yes' if is_public else 'no':<8} {'yes' if is_owner else 'no':<8} {scopes or ''}"
+                )
+        else:
+            where = "WHERE t.name LIKE ?" if like else ""
+            params: list[str] = [like] if like else []
+            rows = conn.execute(
+                f"""
+                SELECT t.name,
+                       t.is_public,
+                       GROUP_CONCAT(DISTINCT s.name) AS scopes,
+                       COUNT(DISTINCT towner.user_id) AS owner_count
+                FROM tags t
+                LEFT JOIN tags_users_scopes tus ON tus.tag_id = t.id
+                LEFT JOIN scopes s ON s.id = tus.scope_id
+                LEFT JOIN tag_owners towner ON towner.tag_id = t.id
+                {where}
+                GROUP BY t.name
+                ORDER BY t.name
+                """,
+                params,
+            ).fetchall()
+            if not rows:
+                typer.echo("No tags found.")
+                return
+            typer.echo(f"{'TAG':<40} {'PUBLIC':<8} {'OWNERS':<8} SCOPES")
+            typer.echo("-" * 90)
+            for tag, is_public, scopes, owner_count in rows:
+                typer.echo(
+                    f"{tag:<40} {'yes' if is_public else 'no':<8} {owner_count:<8} {scopes or ''}"
+                )
 
 
 def main() -> None:

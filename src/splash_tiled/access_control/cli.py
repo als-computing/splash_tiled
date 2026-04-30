@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
+from typing import Annotated, Optional
 
 import typer
+from tiled.client import from_uri
 
 from splash_tiled.access_control.inspect import app as query_app
 from splash_tiled.access_control.tiled_tags import (
@@ -117,6 +118,47 @@ def compile_all(
         tag_definitions_path=_resolve_tag_defs(tag_definitions),
         generated_tag_definitions_path=generated_yaml,
     )
+
+
+def _tag_recursive(node, tags: list[str]) -> int:
+    node.access_blob(access_tag=tags)
+    count = 1
+    try:
+        for key in node:
+            count += _tag_recursive(node[key], tags)
+    except TypeError:
+        pass
+    return count
+
+
+@app.command("set-access-tags")
+def tag_path_command(
+    path: Annotated[
+        str, typer.Argument(help="Path within tiled (e.g. beamlines/12.3.2).")
+    ],
+    tags: Annotated[
+        list[str],
+        typer.Argument(
+            help="Access tags to apply (space-separated, e.g. SB-01234-001 12.3.2-staff)."
+        ),
+    ],
+    uri: str = typer.Option(
+        "http://localhost:8000", "--uri", help="Tiled server base URI."
+    ),
+    api_key: Optional[str] = typer.Option(
+        None, "--api-key", envvar="TILED_API_KEY", help="Tiled API key."
+    ),
+) -> None:
+    """Recursively apply access tags to a tiled node and all its descendants.
+
+    Example: access set-access-tags beamlines/12.3.2 SB-01234-001 12.3.2-staff --uri http://tiled:8000
+    """
+    client = from_uri(uri, api_key=api_key)
+    node = client
+    for part in (p for p in path.split("/") if p):
+        node = node[part]
+    count = _tag_recursive(node, tags)
+    typer.echo(f"Tagged {count} nodes.")
 
 
 def main() -> None:

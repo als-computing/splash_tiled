@@ -40,10 +40,8 @@ def load_esaf_groups(esaf_db_path: Path) -> dict[str, list[str]]:
         groups = get_esaf_orcid_map(connection)
         groups.update(get_proposal_orcid_map(connection))
         beamline_staff_groups = get_beamline_staff_group_map(connection)
-        for beamline_name in get_esaf_friendly_ids_by_beamline(connection):
-            groups[f"{beamline_name}-staff"] = beamline_staff_groups.get(
-                beamline_name, []
-            )
+        for beamline_name, staff_orcids in beamline_staff_groups.items():
+            groups[f"{beamline_name}-staff"] = staff_orcids
         return groups
 
 
@@ -90,11 +88,9 @@ def build_generated_tag_definitions(
         if name not in esaf_friendly_id_set and name not in proposal_friendly_id_set
     }
 
-    for beamline_name, esaf_friendly_ids in esaf_ids_by_beamline.items():
+    all_beamlines_with_staff = set(esaf_ids_by_beamline) | set(beamline_staff_groups)
+    for beamline_name in all_beamlines_with_staff:
         beamline_staff_group_name = f"{beamline_name}-staff"
-
-        # Emit an explicit staff tag for each beamline so access checks can
-        # validate the tag even when no ESAF-specific tags are involved.
         generated_tags.setdefault(
             beamline_staff_group_name,
             {
@@ -106,6 +102,9 @@ def build_generated_tag_definitions(
                 ]
             },
         )
+
+    for beamline_name, esaf_friendly_ids in esaf_ids_by_beamline.items():
+        beamline_staff_group_name = f"{beamline_name}-staff"
 
         if beamline_name not in beamline_staff_groups:
             beamline_staff_groups[beamline_name] = []
