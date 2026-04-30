@@ -5,6 +5,7 @@ from typing import Annotated, Optional
 
 import typer
 from tiled.client import from_uri
+from tiled.structures.core import StructureFamily
 
 from splash_tiled.access_control.inspect import app as query_app
 from splash_tiled.access_control.tiled_tags import (
@@ -120,14 +121,26 @@ def compile_all(
     )
 
 
-def _tag_recursive(node, tags: list[str]) -> int:
-    node.replace_metadata(access_tags=tags)
-    count = 1
-    try:
+def _tag_recursive(node, tags: list[str], errors: list[str]) -> int:
+    current_tags = (node.access_blob or {}).get("tags", [])
+    if set(current_tags) == set(tags):
+        typer.echo(f"  {node.uri}  (already set, skipping)")
+        count = 0
+    else:
+        typer.echo(f"  {node.uri}  →  {tags}")
+        try:
+            node.patch_metadata(
+                access_blob_patch={"tags": tags},
+                content_type="application/merge-patch+json",
+            )
+            count = 1
+        except Exception as exc:
+            errors.append(f"  {node.uri}: {exc}")
+            typer.echo(f"    ERROR: {exc}", err=True)
+            count = 0
+    if node.structure_family == StructureFamily.container:
         for key in node:
-            count += _tag_recursive(node[key], tags)
-    except TypeError:
-        pass
+            count += _tag_recursive(node[key], tags, errors)
     return count
 
 
@@ -157,8 +170,13 @@ def tag_path_command(
     node = client
     for part in (p for p in path.split("/") if p):
         node = node[part]
-    count = _tag_recursive(node, tags)
+    errors: list[str] = []
+    count = _tag_recursive(node, tags, errors)
     typer.echo(f"Tagged {count} nodes.")
+    if errors:
+        typer.echo(f"Skipped {len(errors)} nodes with errors:", err=True)
+        for msg in errors:
+            typer.echo(msg, err=True)
 
 
 def main() -> None:

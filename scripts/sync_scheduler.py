@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -30,9 +31,9 @@ def resolve_path_option(
     return Path(get_env(env_name, default))
 
 
-def resolve_cron_expression(cron: str | None) -> str:
-    if cron is None:
-        raise typer.BadParameter("A cron expression is required.")
+def resolve_cron_expression(cron: str) -> str:
+    if not cron:
+        raise typer.BadParameter("SYNC_CRON environment variable is required.")
     return cron
 
 
@@ -66,7 +67,10 @@ def sync_once(
 
     beamline_args = parse_beamline_args(beamlines)
 
-    typer.echo(f"[{utc_now()}] Running scheduled ESAF sync")
+    start = time.monotonic()
+    typer.echo(f"[{utc_now()}] Sync started")
+
+    t0 = time.monotonic()
     subprocess.run(
         [
             "python",
@@ -80,7 +84,11 @@ def sync_once(
         ],
         check=True,
     )
+    typer.echo(
+        f"[{utc_now()}] User Office fetch complete ({time.monotonic() - t0:.1f}s)"
+    )
 
+    t0 = time.monotonic()
     subprocess.run(
         [
             "python",
@@ -98,19 +106,12 @@ def sync_once(
         ],
         check=True,
     )
+    typer.echo(f"[{utc_now()}] Tag compile complete ({time.monotonic() - t0:.1f}s)")
+    typer.echo(f"[{utc_now()}] Sync finished — total {time.monotonic() - start:.1f}s")
 
 
 @app.command()
 def main(
-    cron: str = typer.Argument(
-        ...,
-        metavar="CRON",
-        envvar="SYNC_CRON",
-        help=(
-            "Cron expression in crontab format: 'minute hour day month "
-            "day_of_week'. Required as CRON or via SYNC_CRON."
-        ),
-    ),
     esaf_db_path: Path | None = typer.Option(
         None,
         "--esaf-db-path",
@@ -146,7 +147,7 @@ def main(
         ),
     ),
 ) -> None:
-    cron_expr = resolve_cron_expression(cron)
+    cron_expr = resolve_cron_expression(get_env("SYNC_CRON", ""))
     resolved_esaf_db_path = resolve_path_option(
         esaf_db_path,
         env_name="ESAF_DB_PATH",
@@ -171,7 +172,7 @@ def main(
         "API_URL",
         "https://als-esaf.als.lbl.gov/EsafInformation/GetEsaf",
     )
-    beamlines = get_env("BEAMLINES", "12.3.2,9.3.2,7.0.2")
+    beamlines = get_env("BEAMLINES", "all")
 
     scheduler = BlockingScheduler(timezone="UTC")
 

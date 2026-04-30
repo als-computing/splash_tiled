@@ -27,7 +27,7 @@ services:
       - ./tiled_config/config.yaml:/tiled_deploy/config/config.yaml:ro
     restart: unless-stopped
 
-  sync-worker:
+  access-worker:
     build:
       context: .
       dockerfile: Containerfile
