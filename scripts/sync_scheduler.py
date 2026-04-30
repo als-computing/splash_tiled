@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 import subprocess
 import time
@@ -209,6 +210,9 @@ def main(
             "beamlines": beamlines,
         },
     )
+    logging.basicConfig()
+    logging.getLogger("apscheduler").setLevel(logging.INFO)
+
     typer.echo(f"[{utc_now()}] APScheduler started with cron: {cron_expr} (UTC)")
 
     scheduler.start()
