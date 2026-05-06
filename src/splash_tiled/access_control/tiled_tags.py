@@ -1,8 +1,9 @@
 import logging
+import os
 import sqlite3
 from pathlib import Path
-from typing import Any
-from urllib.parse import quote
+from typing import Any, Optional
+from urllib.parse import quote, unquote, urlparse
 
 import typer
 import yaml  # type: ignore[import-untyped]
@@ -35,6 +36,39 @@ def get_default_tag_definitions_path() -> Path:
 
 def get_default_generated_tag_definitions_path() -> Path:
     return Path(__file__).resolve().parents[3] / "tag_definitions.generated.yml"
+
+
+def _uri_to_path(uri: str) -> Path:
+    if uri.startswith("file:"):
+        return Path(unquote(urlparse(uri).path))
+    return Path(uri)
+
+
+def read_tiled_config_paths(config_path: Path) -> dict[str, Path]:
+    """Extract compiled-tags and sibling paths from a tiled config file."""
+    from tiled.config import parse_configs
+
+    config = parse_configs(config_path)
+    ac = config.access_policy
+    if ac is None or not isinstance(getattr(ac, "args", None), dict):
+        raise typer.BadParameter(
+            f"No access_control.args found in {config_path}.",
+            param_hint="--tiled-config",
+        )
+    tags_db = ac.args.get("tags_db", {})
+    uri = tags_db.get("uri") if isinstance(tags_db, dict) else None
+    if not uri:
+        raise typer.BadParameter(
+            f"No access_control.args.tags_db.uri found in {config_path}.",
+            param_hint="--tiled-config",
+        )
+    compiled_tags_path = _uri_to_path(uri)
+    parent = compiled_tags_path.parent
+    return {
+        "output_sqlite_path": compiled_tags_path,
+        "esaf_db_path": parent / "esafs.db",
+        "generated_tag_definitions_path": parent / "tag_definitions.generated.yml",
+    }
 
 
 def load_esaf_groups(esaf_db_path: Path) -> dict[str, list[str]]:
@@ -289,35 +323,72 @@ def generate_yaml_command(
 
 @app.command("compile")
 def compile_command(
-    output_sqlite_path: Path = typer.Option(
-        get_default_output_sqlite_path(),
-        "--output-sqlite-path",
-        help="Path for the compiled tags SQLite database.",
+    tiled_config: Optional[Path] = typer.Option(
+        None,
+        "--tiled-config",
+        envvar="TILED_CONFIG",
+        help=(
+            "Path to the tiled config file (or directory). "
+            "Defaults to the TILED_CONFIG environment variable, then config.yml. "
+            "Used to derive output-sqlite-path, esaf-sqlite-path, and generated-yaml-path "
+            "when those options are not explicitly set."
+        ),
     ),
-    esaf_db_path: Path = typer.Option(
-        get_default_esaf_db_path(),
+    output_sqlite_path: Optional[Path] = typer.Option(
+        None,
+        "--output-sqlite-path",
+        help="Path for the compiled tags SQLite database. Overrides the tiled config.",
+    ),
+    esaf_db_path: Optional[Path] = typer.Option(
+        None,
         "--esaf-sqlite-path",
-        help="Path to the ESAF SQLite database used to resolve groups.",
+        help="Path to the ESAF SQLite database used to resolve groups. Overrides the tiled config.",
     ),
     tag_definitions_path: Path = typer.Option(
         get_default_tag_definitions_path(),
         "--tag-definitions-path",
         help="Path to the template tag definitions YAML file.",
     ),
-    generated_tag_definitions_path: Path = typer.Option(
-        get_default_generated_tag_definitions_path(),
+    generated_tag_definitions_path: Optional[Path] = typer.Option(
+        None,
         "--generated-yaml-path",
         help=(
             "Path for the generated tag definitions YAML file passed to "
-            "AccessTagsCompiler."
+            "AccessTagsCompiler. Overrides the tiled config."
         ),
     ),
 ) -> None:
+    # Resolve tiled config: explicit option → TILED_CONFIG env var → config.yml
+    config_file = tiled_config or Path(os.getenv("TILED_CONFIG", "config.yml"))
+    tiled_paths: dict[str, Path] = {}
+    if config_file.exists():
+        tiled_paths = read_tiled_config_paths(config_file)
+        logger.info("Reading paths from tiled config: %s", config_file)
+    elif tiled_config is not None:
+        raise typer.BadParameter(
+            f"Tiled config not found: {config_file}",
+            param_hint="--tiled-config",
+        )
+
+    resolved_output_sqlite_path = (
+        output_sqlite_path
+        or tiled_paths.get("output_sqlite_path")
+        or get_default_output_sqlite_path()
+    )
+    resolved_esaf_db_path = (
+        esaf_db_path or tiled_paths.get("esaf_db_path") or get_default_esaf_db_path()
+    )
+    resolved_generated_path = (
+        generated_tag_definitions_path
+        or tiled_paths.get("generated_tag_definitions_path")
+        or get_default_generated_tag_definitions_path()
+    )
+
     compile_tags(
-        output_sqlite_path=output_sqlite_path,
-        esaf_db_path=esaf_db_path,
+        output_sqlite_path=resolved_output_sqlite_path,
+        esaf_db_path=resolved_esaf_db_path,
         tag_definitions_path=tag_definitions_path,
-        generated_tag_definitions_path=generated_tag_definitions_path,
+        generated_tag_definitions_path=resolved_generated_path,
     )
 
 
