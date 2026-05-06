@@ -1,3 +1,4 @@
+import logging
 import sqlite3
 from pathlib import Path
 from typing import Any
@@ -16,6 +17,7 @@ from splash_tiled.access_control.user_office import (
     get_proposal_orcid_map,
 )
 
+logger = logging.getLogger(__name__)
 app = typer.Typer(add_completion=False)
 
 
@@ -123,17 +125,16 @@ def build_generated_tag_definitions(
                 {"name": esaf_friendly_id, "role": "data_contributor"},
                 {"name": beamline_staff_group_name, "role": "data_contributor"},
             ]
-            esaf_auto_tags = [
-                {"name": "data_admin"},
-                {"name": beamline_staff_group_name},
-            ]
             generated_tags[f"{esaf_friendly_id}-raw"] = {
                 "groups": esaf_groups_read,
-                "auto_tags": esaf_auto_tags,
+                "auto_tags": [{"name": beamline_staff_group_name}],
             }
             generated_tags[f"{esaf_friendly_id}-processed"] = {
                 "groups": esaf_groups_write,
-                "auto_tags": esaf_auto_tags,
+                "auto_tags": [
+                    {"name": "data_admin"},
+                    {"name": beamline_staff_group_name},
+                ],
             }
 
     for proposal_friendly_id, beamline_names in beamlines_by_proposal.items():
@@ -141,7 +142,8 @@ def build_generated_tag_definitions(
         proposal_groups_write = [
             {"name": proposal_friendly_id, "role": "data_contributor"}
         ]
-        proposal_auto_tags = [{"name": "data_admin"}]
+        proposal_auto_tags_raw = []
+        proposal_auto_tags_processed = [{"name": "data_admin"}]
         for beamline_name in beamline_names:
             beamline_staff_group_name = f"{beamline_name}-staff"
             proposal_groups_read.append(
@@ -150,14 +152,15 @@ def build_generated_tag_definitions(
             proposal_groups_write.append(
                 {"name": beamline_staff_group_name, "role": "data_contributor"}
             )
-            proposal_auto_tags.append({"name": beamline_staff_group_name})
+            proposal_auto_tags_raw.append({"name": beamline_staff_group_name})
+            proposal_auto_tags_processed.append({"name": beamline_staff_group_name})
         generated_tags[f"{proposal_friendly_id}-raw"] = {
             "groups": proposal_groups_read,
-            "auto_tags": proposal_auto_tags,
+            "auto_tags": proposal_auto_tags_raw,
         }
         generated_tags[f"{proposal_friendly_id}-processed"] = {
             "groups": proposal_groups_write,
-            "auto_tags": proposal_auto_tags,
+            "auto_tags": proposal_auto_tags_processed,
         }
 
     return {
@@ -241,6 +244,11 @@ def compile_tags(
         output_yaml_path=generated_tag_definitions_path,
     )
 
+    logger.info(
+        "Compiling tags from %s → %s",
+        resolved_generated_tag_definitions_path,
+        resolved_output_sqlite_path,
+    )
     access_tags_compiler = AccessTagsCompiler(
         ALL_SCOPES,
         resolved_generated_tag_definitions_path,

@@ -132,10 +132,17 @@ tag_owners:
         "read:data",
         "read:metadata",
     ]
-    assert generated["tags"]["SB-01482-001"] == {
+    assert generated["tags"]["SB-01482-001-raw"] == {
         "groups": [
             {"name": "SB-01482-001", "role": "facility_user"},
             {"name": "12.3.2-staff", "role": "facility_user"},
+        ],
+        "auto_tags": [{"name": "12.3.2-staff"}],
+    }
+    assert generated["tags"]["SB-01482-001-processed"] == {
+        "groups": [
+            {"name": "SB-01482-001", "role": "data_contributor"},
+            {"name": "12.3.2-staff", "role": "data_contributor"},
         ],
         "auto_tags": [{"name": "data_admin"}, {"name": "12.3.2-staff"}],
     }
@@ -237,11 +244,18 @@ tag_owners:
 
     generated = yaml.safe_load(resolved_output_yaml_path.read_text(encoding="utf-8"))
     assert resolved_output_yaml_path == output_yaml_path.resolve()
-    assert generated["tags"]["SB-01482-001"]["groups"] == [
+    assert generated["tags"]["SB-01482-001-raw"]["groups"] == [
         {"name": "SB-01482-001", "role": "facility_user"},
         {"name": "12.3.2-staff", "role": "facility_user"},
     ]
-    assert generated["tags"]["SB-01482-001"]["auto_tags"] == [
+    assert generated["tags"]["SB-01482-001-raw"]["auto_tags"] == [
+        {"name": "12.3.2-staff"},
+    ]
+    assert generated["tags"]["SB-01482-001-processed"]["groups"] == [
+        {"name": "SB-01482-001", "role": "data_contributor"},
+        {"name": "12.3.2-staff", "role": "data_contributor"},
+    ]
+    assert generated["tags"]["SB-01482-001-processed"]["auto_tags"] == [
         {"name": "data_admin"},
         {"name": "12.3.2-staff"},
     ]
@@ -307,8 +321,7 @@ tag_owners: {}
 
     generated = build_generated_tag_definitions(esaf_db_path, template_path)
 
-    assert generated["tags"]["SB-01482-001"]["auto_tags"] == [
-        {"name": "data_admin"},
+    assert generated["tags"]["SB-01482-001-raw"]["auto_tags"] == [
         {"name": "12.3.2-staff"},
     ]
 
@@ -381,6 +394,13 @@ roles:
     scopes:
       - read:data
       - read:metadata
+  data_contributor:
+    scopes:
+      - read:data
+      - read:metadata
+      - write:data
+      - write:metadata
+      - create:node
   facility_admin:
     scopes:
       - read:data
@@ -481,7 +501,12 @@ tag_owners: {}
 
         # the data_admin user does NOT have facility_user-only read:data access
         # on the ESAF tag (it gets access via auto_tag, not direct membership)
-        cur.execute("SELECT id FROM tags WHERE name = 'SB-01482-001'")
+        cur.execute("SELECT id FROM tags WHERE name = 'SB-01482-001-raw'")
         assert (
             cur.fetchone() is not None
-        ), "SB-01482-001 ESAF tag not found in compiled DB"
+        ), "SB-01482-001-raw ESAF tag not found in compiled DB"
+
+        cur.execute("SELECT id FROM tags WHERE name = 'SB-01482-001-processed'")
+        assert (
+            cur.fetchone() is not None
+        ), "SB-01482-001-processed ESAF tag not found in compiled DB"
