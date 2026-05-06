@@ -1,6 +1,8 @@
 roles:
   facility_user:
     scopes: ["read:data", "read:metadata"]
+  data_contributor:
+    scopes: ["read:data", "read:metadata", "write:data", "write:metadata", "create:node"]
   facility_admin:
     scopes: ["read:data", "read:metadata",
              "write:data", "write:metadata",

@@ -54,7 +54,6 @@ Repository = "https://github.com/als-lbl/splash_tiled"
 Documentation = "https://github.com/als-lbl/splash_tiled#readme"
 
 [project.scripts]
-als-tiled = "splash_tiled.main:main"
 als-hub = "splash_tiled.access_control.user_office:main"
 compile-tags = "splash_tiled.access_control.tiled_tags:main"
 access-query = "splash_tiled.access_control.inspect:main"

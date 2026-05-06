@@ -85,7 +85,12 @@ def build_generated_tag_definitions(
     generated_tags = {
         name: value
         for name, value in template_tags.items()
-        if name not in esaf_friendly_id_set and name not in proposal_friendly_id_set
+        if name not in esaf_friendly_id_set
+        and name not in proposal_friendly_id_set
+        and not any(
+            name in (f"{id_}-raw", f"{id_}-processed")
+            for id_ in esaf_friendly_id_set | proposal_friendly_id_set
+        )
     }
 
     all_beamlines_with_staff = set(esaf_ids_by_beamline) | set(beamline_staff_groups)
@@ -110,34 +115,48 @@ def build_generated_tag_definitions(
             beamline_staff_groups[beamline_name] = []
 
         for esaf_friendly_id in esaf_friendly_ids:
-            generated_tags[esaf_friendly_id] = {
-                "groups": [
-                    {
-                        "name": esaf_friendly_id,
-                        "role": "facility_user",
-                    },
-                    {
-                        "name": beamline_staff_group_name,
-                        "role": "facility_user",
-                    },
-                ],
-                "auto_tags": [
-                    {"name": "data_admin"},
-                    {"name": beamline_staff_group_name},
-                ],
+            esaf_groups_read = [
+                {"name": esaf_friendly_id, "role": "facility_user"},
+                {"name": beamline_staff_group_name, "role": "facility_user"},
+            ]
+            esaf_groups_write = [
+                {"name": esaf_friendly_id, "role": "data_contributor"},
+                {"name": beamline_staff_group_name, "role": "data_contributor"},
+            ]
+            esaf_auto_tags = [
+                {"name": "data_admin"},
+                {"name": beamline_staff_group_name},
+            ]
+            generated_tags[f"{esaf_friendly_id}-raw"] = {
+                "groups": esaf_groups_read,
+                "auto_tags": esaf_auto_tags,
+            }
+            generated_tags[f"{esaf_friendly_id}-processed"] = {
+                "groups": esaf_groups_write,
+                "auto_tags": esaf_auto_tags,
             }
 
     for proposal_friendly_id, beamline_names in beamlines_by_proposal.items():
-        proposal_groups = [{"name": proposal_friendly_id, "role": "facility_user"}]
+        proposal_groups_read = [{"name": proposal_friendly_id, "role": "facility_user"}]
+        proposal_groups_write = [
+            {"name": proposal_friendly_id, "role": "data_contributor"}
+        ]
         proposal_auto_tags = [{"name": "data_admin"}]
         for beamline_name in beamline_names:
             beamline_staff_group_name = f"{beamline_name}-staff"
-            proposal_groups.append(
+            proposal_groups_read.append(
                 {"name": beamline_staff_group_name, "role": "facility_user"}
             )
+            proposal_groups_write.append(
+                {"name": beamline_staff_group_name, "role": "data_contributor"}
+            )
             proposal_auto_tags.append({"name": beamline_staff_group_name})
-        generated_tags[proposal_friendly_id] = {
-            "groups": proposal_groups,
+        generated_tags[f"{proposal_friendly_id}-raw"] = {
+            "groups": proposal_groups_read,
+            "auto_tags": proposal_auto_tags,
+        }
+        generated_tags[f"{proposal_friendly_id}-processed"] = {
+            "groups": proposal_groups_write,
             "auto_tags": proposal_auto_tags,
         }
 
