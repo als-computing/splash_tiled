@@ -77,3 +77,6 @@ docs/
 
 # CI/CD
 .github/
+
+*.sqlite3
+tag_definitions.generated.yml

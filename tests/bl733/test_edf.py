@@ -5,10 +5,10 @@ from tiled.client import Context, from_context
 from tiled.client.register import register
 from tiled.server.app import build_app_from_config
 
-from als_tiled.bl733.adapters.gb import PILATUS_2M_PIXELS_X, PILATUS_2M_PIXELS_Y
-from als_tiled.bl733.adapters.metadata import parse_txt_accompanying_edf
+from splash_tiled.bl733.adapters.gb import PILATUS_2M_PIXELS_X, PILATUS_2M_PIXELS_Y
+from splash_tiled.bl733.adapters.metadata import parse_txt_accompanying_edf
 
-EDF_ADAPTER = "als_tiled.bl733.adapters.edf:EDFAdapter"
+EDF_ADAPTER = "splash_tiled.bl733.adapters.edf:EDFAdapter"
 EDF_MIMETYPE = "application/x-edf"
 
 

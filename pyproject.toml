@@ -3,8 +3,8 @@ requires = ["setuptools>=64", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "als_tiled"
-version = "0.2.8a1"
+name = "splash_tiled"
+version = "0.1.0"
 description = "A tiled-based data management system for the Advanced Light Source"
 readme = "README.md"
 authors = [
@@ -22,40 +22,42 @@ classifiers = [
 ]
 requires-python = ">=3.11"
 dependencies = [
+  "httpx>=0.27",
+  "PyYAML>=6",
+  "typer>=0.12",
+  "APScheduler>=3.10",
   "tiled[client]>=0.2.8",
 ]
 
 [project.optional-dependencies]
-dev = [
-    "pytest>=7.0",
-    "pytest-cov",
-    "pytest-asyncio",
-    "black",
-    "isort",
-    "flake8",
-    "mypy",
-    "pre-commit",
-]
-test = [
-    "pytest>=7.0",
-    "pytest-cov",
-    "pytest-asyncio",
-    "als_tiled[bl733,tiled-all]",
-]
 tiled-all = [
   "tiled[all]>=0.2.8",
 ]
 bl733 = [
   "fabio",
 ]
+dev = [
+  "flake8",
+  "black",
+  "isort",
+  "mypy",
+  "pytest",
+  "pytest-cov",
+  "pytest-asyncio",
+  "fabio",
+  "tiled[server]>=0.2.8"
+]
 
 [project.urls]
-Homepage = "https://github.com/als-lbl/als_tiled"
-Repository = "https://github.com/als-lbl/als_tiled"
-Documentation = "https://github.com/als-lbl/als_tiled#readme"
+Homepage = "https://github.com/als-lbl/splash_tiled"
+Repository = "https://github.com/als-lbl/splash_tiled"
+Documentation = "https://github.com/als-lbl/splash_tiled#readme"
 
 [project.scripts]
-als-tiled = "als_tiled.main:main"
+als-hub = "splash_tiled.access_control.user_office:main"
+compile-tags = "splash_tiled.access_control.tiled_tags:main"
+access-query = "splash_tiled.access_control.inspect:main"
+access = "splash_tiled.access_control.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -88,7 +90,7 @@ line_length = 88
 
 [tool.pytest.ini_options]
 minversion = "7.0"
-addopts = "-ra -q --cov=als_tiled --cov-report=term-missing"
+addopts = "-ra -q --cov=splash_tiled --cov-report=term-missing"
 testpaths = [
     "tests",
 ]

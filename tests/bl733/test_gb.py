@@ -5,13 +5,13 @@ from tiled.client import Context, from_context
 from tiled.client.register import register
 from tiled.server.app import build_app_from_config
 
-from als_tiled.bl733.adapters.gb import (
+from splash_tiled.bl733.adapters.gb import (
     PILATUS_2M_PIXELS_X,
     PILATUS_2M_PIXELS_Y,
     GeneralBinaryPilatus2MAdapter,
 )
 
-GB_ADAPTER = "als_tiled.bl733.adapters.gb:GeneralBinaryPilatus2MAdapter"
+GB_ADAPTER = "splash_tiled.bl733.adapters.gb:GeneralBinaryPilatus2MAdapter"
 GB_MIMETYPE = "application/x-gb"
 
 

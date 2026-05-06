@@ -1,0 +1,77 @@
+name: tiled-staging
+
+services:
+  postgres:
+    image: "postgres:15"
+    environment:
+      POSTGRES_USER: "tiled_staging"
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_DB: "tiled_staging_auth"
+    secrets:
+      - postgres_password
+    volumes:
+      - /opt/staging/tiled/postgres_data:/var/lib/postgresql/data
+      - /opt/staging/tiled/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    networks:
+      - tiled_staging
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tiled_staging -d tiled_staging_auth"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+  tiled:
+    image: "ghcr.io/als-computing/splash_tiled:pr-6"
+    user: "47781:1011"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - /opt/staging/tiled/tiled.env
+    volumes:
+      - /opt/staging/tiled/config:/deploy/config:ro
+      - /global/beegfs/beamlines:/global/beegfs/beamlines:rw
+      - ./tags:/tags:rw
+    secrets:
+      - postgres_password
+    networks:
+      - tiled_staging
+      - redis_staging
+      - web
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.tiled-staging.rule=Host(`tiled-staging.computing.als.lbl.gov`)"
+      - "traefik.http.routers.tiled-staging.entrypoints=websecure"
+      - "traefik.http.routers.tiled-staging.tls=true"
+      - "traefik.http.services.tiled-staging.loadbalancer.server.port=8000"
+
+  access-worker:
+    image: "ghcr.io/als-computing/splash_tiled:pr-6"
+    user: "47781:1011"
+    security_opt:
+      - label=disable
+    command:
+      - bash
+      - /app/scripts/sync_loop.sh
+    environment:
+      SYNC_CRON: "0 */5 * * *"
+      BEAMLINES: "all"
+    volumes:
+      - ./tags:/app/tags:rw
+      - ./data:/app/data:rw
+    restart: unless-stopped
+
+
+secrets:
+  postgres_password:
+    file: /opt/staging/tiled/secrets/postgres_password
+
+networks:
+  tiled_staging:
+    external: true
+  web:
+    external: true
+  redis_staging:
+    external: true

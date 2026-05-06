@@ -1,0 +1,16 @@
+roles:
+  facility_user:
+    scopes: ["read:data", "read:metadata"]
+  data_contributor:
+    scopes: ["read:data", "read:metadata", "write:data", "write:metadata", "create:node"]
+  facility_admin:
+    scopes: ["read:data", "read:metadata",
+             "write:data", "write:metadata",
+             "delete:node", "delete:revision",
+             "create:node", "register"]
+
+tags:
+  data_admin:
+    users:
+      - name: 0000-0002-1539-0297  #dylan
+        role: facility_admin

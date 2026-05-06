@@ -10,9 +10,9 @@ This project provides a specialized Tiled server configuration for managing scie
 
 - Built on the robust Tiled framework
 - Docker containerization for easy deployment
-- Support for Python 3.11 and 3.12
+- Support for Python 3.13
 - Comprehensive CI/CD pipeline with GitHub Actions
-- Pre-configured development environment
+- Reproducible development environment managed with [Pixi](https://pixi.sh/)
 
 ## Quick Start
 
@@ -20,122 +20,144 @@ This project provides a specialized Tiled server configuration for managing scie
 
 ```bash
 # Build the Docker image
-docker build -t als_tiled -f Containerfile .
+docker build -t splash_tiled -f Containerfile .
 
 # Run the container
-docker run -p 8000:8000 als_tiled
+docker run -p 8000:8000 splash_tiled
 ```
 
 ### Local Development
 
 ```bash
 # Clone the repository
-git clone https://github.com/als-lbl/als_tiled.git
-cd als_tiled
+git clone https://github.com/als-computing/splash_tiled.git
+cd splash_tiled
 
-# Install in development mode
-pip install -e .[dev]
+# Install and activate the environment
+pixi install
+pixi shell
 
-# Run the application
-als-tiled
+# Run tests
+pixi run test
 ```
 
 ## Installation
 
 ### Requirements
 
-- Python 3.11 or 3.12
+- [Pixi](https://pixi.sh/) (recommended)
+- Python 3.13
 - Docker (for containerized deployment)
 
-### From Source
+### With Pixi (recommended)
 
 ```bash
-pip install -e .
+# Install Pixi if needed
+curl -sSf https://pixi.sh/install.sh | bash
+
+# Install all dependencies
+pixi install
 ```
 
-### Development Installation
-
-```bash
-pip install -e .[dev]
-```
-
-This installs additional development dependencies including:
-- pytest for testing
-- black for code formatting
-- isort for import sorting
-- flake8 for linting
-- mypy for type checking
-- pre-commit for git hooks
+Pixi manages all dependencies (including Python 3.13) and installs the package in editable mode automatically.
 
 ## Development
 
-### Setting up the Development Environment
+This project uses [Pixi](https://pixi.sh/) for reproducible environments.
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/als-lbl/als_tiled.git
-   cd als_tiled
-   ```
+### Setup
 
-2. Install development dependencies:
-   ```bash
-   pip install -e .[dev]
-   ```
+```bash
+# Install Pixi if you don't have it
+curl -sSf https://pixi.sh/install.sh | bash
 
-3. Install pre-commit hooks:
-   ```bash
-   pre-commit install
-   ```
+# Install the environment
+pixi install
+
+# Start a shell in the environment
+pixi shell
+```
+
+To update dependencies:
+```bash
+pixi update
+```
 
 ### Running Tests
 
 ```bash
-# Run all tests
-pytest
+# Run all tests with coverage
+pixi run test
 
-# Run tests with coverage
-pytest --cov=als_tiled
-
-# Run specific test file
-pytest tests/test_main.py
+# Or run pytest directly inside a pixi shell
+pytest tests/test_specific.py
 ```
 
 ### Code Quality
 
-The project uses several tools to maintain code quality:
+The project uses Black, isort, flake8, and mypy for code quality.
 
-- **Black**: Code formatting
-- **isort**: Import sorting
-- **flake8**: Linting
-- **mypy**: Type checking
-
-Run all quality checks:
 ```bash
-black src tests
-isort src tests
-flake8 src tests
-mypy src
+pixi run lint      # Check formatting, imports, style, and types
+pixi run format    # Auto-format code with black and isort
 ```
+
+For more, see the [Pixi documentation](https://pixi.sh/docs/).
 
 ## Docker
 
 ### Building the Image
 
 ```bash
-docker build -t als_tiled -f .Containerfile .
+docker build -t splash_tiled -f Containerfile .
 ```
 
 ### Running the Container
 
 ```bash
 # Basic run
-docker run -p 8000:8000 als_tiled
+docker run -p 8000:8000 splash_tiled
 
 # With environment variables
-docker run -p 8000:8000 -e TILED_SERVER_ENABLE_ORIGINS=* als_tiled
+docker run -p 8000:8000 -e TILED_SERVER_ENABLE_ORIGINS=* splash_tiled
 
 # With volume mounting for data
-docker run -p 8000:8000 -v /path/to/data:/data als_tiled
+docker run -p 8000:8000 -v /path/to/data:/data splash_tiled
+```
+
+### Developer Compose Stack
+
+For access-control testing, use the compose stack in
+`docker-compose.dev.yaml`. It starts:
+
+- `tiled`: Tiled server from the project `Containerfile`
+- `sync-worker`: ESAF + staff sync loop from the same image, running on an interval
+- `seed-data`: one-shot service that creates a `beamlines` container with
+   beamline containers, ESAF containers, and array nodes with different
+   `access_blob.tags`
+
+Start server + sync worker:
+
+```bash
+docker compose -f docker-compose.dev.yaml up --build -d tiled sync-worker
+```
+
+Seed the catalog data:
+
+```bash
+docker compose -f docker-compose.dev.yaml run --rm seed-data
+```
+
+Adjust sync cadence and target beamlines via environment variables in
+`docker-compose.dev.yaml`:
+
+- `SYNC_CRON` (for example: `*/5 * * * *`)
+- `BEAMLINES` (comma-separated list or `all`)
+
+Stop everything:
+
+```bash
+docker compose -f docker-compose.dev.yaml down
 ```
 
 ## CI/CD
@@ -143,7 +165,7 @@ docker run -p 8000:8000 -v /path/to/data:/data als_tiled
 The project includes a comprehensive GitHub Actions workflow that:
 
 1. **Linting**: Runs code quality checks (black, isort, flake8, mypy)
-2. **Testing**: Executes the test suite across Python 3.11 and 3.12
+2. **Testing**: Executes the test suite with Python 3.13
 3. **Building**: Creates Docker images for multiple architectures
 4. **Publishing**: Pushes images to GitHub Container Registry
 
@@ -157,7 +179,7 @@ The project includes a comprehensive GitHub Actions workflow that:
 
 Docker images are automatically published to:
 ```
-ghcr.io/als-lbl/als_tiled
+ghcr.io/als-lbl/splash_tiled
 ```
 
 ## Configuration
@@ -166,6 +188,24 @@ The application can be configured through environment variables:
 
 - `TILED_SERVER_ENABLE_ORIGINS`: Configure CORS origins
 - `PYTHONPATH`: Python module search path
+
+## ESAF Sync Script
+
+The repository includes a small CLI for loading ESAFs into SQLite.
+
+```bash
+als-esaf-sync \
+   --beamline 7.0.2 \
+   --beamline 12.3.2 \
+   --db-path ./esafs.db
+```
+
+The script stores data in four tables:
+
+- `beamline` for sync metadata per beamline
+- `user` for PI, experimental lead, and participant identities
+- `esaf` for the ESAF record itself
+- `esaf_user` for user-to-ESAF roles
 
 ## Contributing
 
@@ -194,4 +234,4 @@ For support and questions, please open an issue on the GitHub repository or cont
 ## Related Projects
 
 - [Tiled](https://github.com/bluesky/tiled) - The underlying framework
-- [Bluesky](https://github.com/bluesky/bluesky) - Data acquisition and analysis framework# als_tiled
+- [Bluesky](https://github.com/bluesky/bluesky) - Data acquisition and analysis framework# splash_tiled

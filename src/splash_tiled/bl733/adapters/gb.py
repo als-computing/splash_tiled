@@ -14,7 +14,7 @@ from tiled.structures.data_source import DataSource
 from tiled.type_aliases import JSON
 from tiled.utils import path_from_uri
 
-from als_tiled.bl733.adapters.metadata import parse_txt_accompanying_edf
+from splash_tiled.bl733.adapters.metadata import parse_txt_accompanying_edf
 
 logger = logging.getLogger(__name__)
 LOADING_MESSAGE = "Loading GB file produced by ALS beamline 7.3.3: %s"
