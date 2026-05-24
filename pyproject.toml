@@ -45,7 +45,7 @@ dev = [
   "pytest-cov",
   "pytest-asyncio",
   "fabio",
-  "tiled[server] @ file:///${PROJECT_ROOT}/../tiled"
+  "tiled[server]
 ]
 
 [project.urls]
