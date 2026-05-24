@@ -47,7 +47,7 @@ dev = [
   "pytest-cov",
   "pytest-asyncio",
   "fabio",
-  "tiled[server]
+  "tiled[server]",
 ]
 
 [project.urls]
