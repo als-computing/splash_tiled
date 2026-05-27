@@ -19,13 +19,17 @@ from splash_tiled.access_control.user_office import (
     run,
 )
 
-app = typer.Typer(help="ALS access control management.", add_completion=False)
+app = typer.Typer(
+    no_args_is_help=True, help="ALS access control management.", add_completion=False
+)
 compile_app = typer.Typer(
-    help="Build ESAF and compiled-tags databases.", add_completion=False
+    no_args_is_help=True,
+    help="Build ESAF and compiled-tags databases.",
+    add_completion=False,
 )
 
-app.add_typer(query_app, name="query")
-app.add_typer(compile_app, name="compile")
+app.add_typer(query_app, no_args_is_help=True, name="query")
+app.add_typer(compile_app, no_args_is_help=True, name="compile")
 
 _ESAF_DB = typer.Option(
     Path("tags/esafs.db"), "--esaf-db", help="ESAF SQLite database."
@@ -144,7 +148,7 @@ def _tag_recursive(node, tags: list[str], errors: list[str]) -> int:
     return count
 
 
-@app.command("set-access-tags")
+@app.command("set-access-tags", no_args_is_help=True)
 def tag_path_command(
     path: Annotated[
         str, typer.Argument(help="Path within tiled (e.g. beamlines/12.3.2).")

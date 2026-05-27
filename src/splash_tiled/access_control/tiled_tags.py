@@ -30,7 +30,7 @@ def get_default_output_sqlite_path() -> Path:
 
 
 def get_default_tag_definitions_path() -> Path:
-    return Path(__file__).resolve().parent[3] / "tags" / "tag_definitions_stub.yaml"
+    return Path(__file__).resolve().parents[3] / "tags" / "tag_definitions_stub.yaml"
 
 
 def get_default_generated_tag_definitions_path() -> Path:
