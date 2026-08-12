@@ -1,4 +1,4 @@
-FROM ghcr.io/bluesky/tiled:0.2.8 AS base
+FROM ghcr.io/bluesky/tiled:0.2.15 AS base
 
 # Rebuild tiled to include inherited access control changes, which are needed for the ALS Computing Hub. Won't be needed once those changes are merged into the main tiled branch and included in a release.
 
