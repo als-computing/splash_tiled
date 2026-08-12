@@ -1,4 +1,4 @@
-FROM ghcr.io/bluesky/tiled:0.2.8 AS base
+FROM ghcr.io/bluesky/tiled:0.2.15 AS base
 
 # uv is a statically-linked Rust binary — no shared-library mprotect call,
 # so it works under rootless Podman where `pip` (glibc RELRO) fails.
