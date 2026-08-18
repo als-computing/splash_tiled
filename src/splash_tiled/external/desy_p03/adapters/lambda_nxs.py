@@ -37,6 +37,26 @@ LAMBDA_DETECTOR_NEXUS_MIMETYPE = "multipart/related;type=application/x-hdf5"
 LAMBDA_DETECTOR_NEXUS_DATASET_PATH = "entry/instrument/detector/data"
 LAMBDA_DETECTOR_NEXUS_DESCRIPTION_PATH = "/entry/instrument/detector/description"
 
+# Total (assembled_dim0, assembled_dim1) for the two physically distinct P03
+# Lambda units -- read directly off this adapter's own output for a real,
+# complete (all-modules-present) scan of each unit, not derived from any
+# per-module offset table.
+#
+# When a physical module is switched off mid-acquisition, the detector writes
+# no file for it at all, and the files that ARE written get renumbered
+# sequentially (m01, m02, ... in write order) -- so a written file's *name*
+# says nothing about which physical module it is, and nothing on disk reveals
+# whether a missing module was the one defining the detector's full extent.
+# Pass the matching size here as `pad_to_detector_size` (by name, or as an
+# explicit (dim0, dim1)) to guarantee the assembled shape always covers the
+# true full detector, with any missing module's region left as a fill_value
+# gap -- instead of the array silently coming out smaller when the missing
+# module happened to sit at the largest offset.
+LAMBDA_KNOWN_DETECTOR_SIZES = {
+    "2M": (1813, 1555),
+    "9M": (3142, 4727),
+}
+
 
 async def walk(catalog, path, files, directories, settings):
     """
@@ -227,6 +247,7 @@ class LambdaDetectorNexusAdapter:
         apply_mask: bool = False,
         excluded_modules: Optional[List[int]] = None,
         fill_value: float = -1.0,
+        pad_to_detector_size: Optional[Union[str, Tuple[int, int]]] = None,
         **kwargs: Optional[Any],
     ) -> None:
         self.specs = specs or []
@@ -236,6 +257,16 @@ class LambdaDetectorNexusAdapter:
         self._apply_mask = apply_mask
         self._excluded_module_indices = set(excluded_modules or [])
         self._fill_value = float(fill_value)
+
+        if isinstance(pad_to_detector_size, str):
+            try:
+                pad_to_detector_size = LAMBDA_KNOWN_DETECTOR_SIZES[pad_to_detector_size]
+            except KeyError:
+                raise ValueError(
+                    f"Unknown pad_to_detector_size {pad_to_detector_size!r}; "
+                    f"known sizes are {sorted(LAMBDA_KNOWN_DETECTOR_SIZES)}"
+                ) from None
+        self._pad_to_detector_size = pad_to_detector_size
 
         self._filepaths = [path_from_uri(u) for u in data_uris]
         self._num_modules = len(self._filepaths)
@@ -251,6 +282,13 @@ class LambdaDetectorNexusAdapter:
             self._module_dim1,
             native_dtype,
         ) = self._inspect_files()
+
+        if self._pad_to_detector_size is not None:
+            pad_dim0, pad_dim1 = self._pad_to_detector_size
+            # max(), not replace: never shrink below what present modules
+            # actually require, in case the requested size is stale/wrong.
+            self._assembled_dim0 = max(self._assembled_dim0, pad_dim0)
+            self._assembled_dim1 = max(self._assembled_dim1, pad_dim1)
 
         # Decide output dtype:
         # - keep native dtype if no corrections are applied
@@ -281,8 +319,10 @@ class LambdaDetectorNexusAdapter:
         return init_adapter_from_catalog(cls, data_source, node, **kwargs)
 
     @classmethod
-    def from_uris(cls, *data_uris: str) -> "LambdaDetectorNexusAdapter":
-        return cls(list(data_uris))
+    def from_uris(
+        cls, *data_uris: str, **kwargs: Optional[Any]
+    ) -> "LambdaDetectorNexusAdapter":
+        return cls(list(data_uris), **kwargs)
 
     def structure(self) -> ArrayStructure:
         return self._structure
@@ -301,6 +341,7 @@ class LambdaDetectorNexusAdapter:
                 dtype=str(self._output_dtype),
                 fill_value=self._fill_value,
                 mask_bad_threshold=int(self.MASK_BAD_THRESHOLD),
+                pad_to_detector_size=self._pad_to_detector_size,
             )
         )
         return metadata
@@ -363,13 +404,15 @@ class LambdaDetectorNexusAdapter:
 
     def _inspect_files(
         self,
-    ) -> Tuple[List[_ModuleInfo], int, int, int, int, int, np.dtype]:
+    ) -> Tuple[List[_ModuleInfo], int, int, int, int, int, int, int, np.dtype]:
         """
         Determine:
         - per-module offsets (offset_dim0/offset_dim1) from translation/distance
         - number of frames (supports 2D or 3D datasets)
         - module shape (from data dataset shape)
-        - assembled detector extents
+        - assembled detector extents (from the modules present in this scan
+          only -- pass pad_to_detector_size to __init__ if the assembled shape
+          should instead guarantee coverage of a known full detector unit)
         - native dtype of the dataset
         """
         module_infos: List[_ModuleInfo] = []

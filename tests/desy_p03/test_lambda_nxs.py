@@ -3,7 +3,12 @@ import pytest
 from tiled.client import Context, from_context
 from tiled.client.register import register
 from tiled.server.app import build_app_from_config
+from tiled.utils import ensure_uri
 
+from splash_tiled.external.desy_p03.adapters.lambda_nxs import (
+    LAMBDA_KNOWN_DETECTOR_SIZES,
+    LambdaDetectorNexusAdapter,
+)
 from tests.desy_p03.conftest import (
     LAMBDA_2M_NUM_COLUMNS,
     LAMBDA_2M_NUM_MODULES,
@@ -45,7 +50,9 @@ def _tiled_context(tmp_path):
     return Context.from_app(build_app_from_config(_tiled_config(tmp_path)))
 
 
-def _expected_frame(module_arrays, offsets, frame_index, flatfields=None):
+def _expected_frame(
+    module_arrays, offsets, frame_index, flatfields=None, assembled_shape=None
+):
     """Build the expected assembled frame by placing each module's data at
     its translated offset over a fill_value-filled canvas -- the same
     placement the adapter itself performs, so this checks that real
@@ -56,8 +63,13 @@ def _expected_frame(module_arrays, offsets, frame_index, flatfields=None):
     adapter is expected to read and multiply in), each module's frame is
     corrected before placement -- for testing the not-yet-applied-flatfield
     path.
+
+    `assembled_shape`, if given, overrides the canvas size computed from
+    `offsets` -- for testing that a missing edge module's region still comes
+    out as a fill_value gap in the *true* full-detector extent, not just the
+    smaller extent implied by the modules that happen to be present.
     """
-    assembled_dim0, assembled_dim1 = lambda_assembled_shape(offsets)
+    assembled_dim0, assembled_dim1 = assembled_shape or lambda_assembled_shape(offsets)
     expected = np.full((assembled_dim0, assembled_dim1), FILL_VALUE, dtype=np.float32)
     for module_index, ((offset_dim0, offset_dim1), module_array) in enumerate(
         zip(offsets, module_arrays)
@@ -107,6 +119,8 @@ async def test_lambda_scan_registers_and_reads(
         assert metadata["num_modules"] == num_modules
         assert metadata["num_frames"] == num_frames
         assert tuple(metadata["assembled_shape"]) == lambda_assembled_shape(offsets)
+        # pad_to_detector_size is opt-in; unset here, so no padding applied.
+        assert metadata["pad_to_detector_size"] is None
 
         for frame_index in range(num_frames):
             frame = client[SCAN_KEY].read(frame_index)
@@ -194,6 +208,117 @@ async def test_lambda_flatfield_applied_when_not_yet_applied(
                     module_arrays, offsets, frame_index, flatfields=flatfields
                 ),
             )
+
+
+def _present_uris_and_arrays(scan_dir, module_arrays, offsets, dropped_index):
+    """Drop one module (as if it had been switched off -- no file written for
+    it at all) and return (present_uris, present_arrays, present_offsets)."""
+    present_uris = [
+        ensure_uri(str(scan_dir / f"scan_name_00001_m{i + 1:02d}.nxs"))
+        for i in range(len(offsets))
+        if i != dropped_index
+    ]
+    present_arrays = [a for i, a in enumerate(module_arrays) if i != dropped_index]
+    present_offsets = [o for i, o in enumerate(offsets) if i != dropped_index]
+    return present_uris, present_arrays, present_offsets
+
+
+def test_lambda_missing_edge_module_shape_shrinks_without_padding(
+    tmp_path, make_desy_p03_lambda_scan
+):
+    """Baseline/documentation of the gap this adapter has: when a physical
+    module is switched off mid-scan, no file is written for it at all, and
+    the files that ARE written get renumbered sequentially -- so a written
+    file's *name* says nothing about which physical module it is, and
+    nothing on disk reveals whether the missing module was the one defining
+    the detector's full extent. Without opting into pad_to_detector_size,
+    dropping the highest-offset module silently shrinks assembled_shape
+    instead of leaving a fill_value gap (unlike a missing middle module)."""
+    scan_dir, module_arrays, offsets = make_desy_p03_lambda_scan(
+        num_modules=LAMBDA_2M_NUM_MODULES,
+        num_columns=LAMBDA_2M_NUM_COLUMNS,
+        num_frames=1,
+    )
+    full_assembled_shape = lambda_assembled_shape(offsets)
+    # Single-column layout: the last module is the unique one defining
+    # assembled_dim0, so dropping it is guaranteed to shrink the shape.
+    dropped_index = max(range(len(offsets)), key=lambda i: offsets[i][0])
+    present_uris, _, present_offsets = _present_uris_and_arrays(
+        scan_dir, module_arrays, offsets, dropped_index
+    )
+
+    adapter = LambdaDetectorNexusAdapter.from_uris(*present_uris)
+
+    assert adapter.metadata()["pad_to_detector_size"] is None
+    assert tuple(adapter.metadata()["assembled_shape"]) != full_assembled_shape
+    assert tuple(adapter.metadata()["assembled_shape"]) == lambda_assembled_shape(
+        present_offsets
+    )
+
+
+def test_lambda_pad_to_detector_size_fills_missing_edge_module_gap(
+    tmp_path, make_desy_p03_lambda_scan
+):
+    """pad_to_detector_size is the explicit, opt-in fix for the gap above:
+    pass an explicit (dim0, dim1) and the assembled shape always covers that
+    full size, with the missing module's region left as a fill_value gap --
+    regardless of which specific module was switched off."""
+    num_frames = 2
+    scan_dir, module_arrays, offsets = make_desy_p03_lambda_scan(
+        num_modules=LAMBDA_2M_NUM_MODULES,
+        num_columns=LAMBDA_2M_NUM_COLUMNS,
+        num_frames=num_frames,
+    )
+    full_assembled_shape = lambda_assembled_shape(offsets)
+    dropped_index = max(range(len(offsets)), key=lambda i: offsets[i][0])
+    present_uris, present_arrays, present_offsets = _present_uris_and_arrays(
+        scan_dir, module_arrays, offsets, dropped_index
+    )
+
+    adapter = LambdaDetectorNexusAdapter.from_uris(
+        *present_uris, pad_to_detector_size=full_assembled_shape
+    )
+
+    assert tuple(adapter.metadata()["assembled_shape"]) == full_assembled_shape
+    assert full_assembled_shape != lambda_assembled_shape(present_offsets)
+
+    for frame_index in range(num_frames):
+        frame = adapter.read(frame_index)
+        np.testing.assert_array_equal(
+            frame,
+            _expected_frame(
+                present_arrays,
+                present_offsets,
+                frame_index,
+                assembled_shape=full_assembled_shape,
+            ),
+        )
+
+
+def test_lambda_pad_to_detector_size_by_known_name(tmp_path, make_desy_p03_lambda_scan):
+    """pad_to_detector_size also accepts a name from LAMBDA_KNOWN_DETECTOR_SIZES
+    (the real P03 unit sizes) instead of a literal (dim0, dim1) -- a single,
+    trivially-small module scan is enough to check the name resolves to the
+    right (much larger) real size, since padding will clearly dominate."""
+    scan_dir, _, offsets = make_desy_p03_lambda_scan(
+        num_modules=1, num_columns=1, num_frames=1
+    )
+    uris = [ensure_uri(str(scan_dir / "scan_name_00001_m01.nxs"))]
+
+    adapter = LambdaDetectorNexusAdapter.from_uris(*uris, pad_to_detector_size="9M")
+
+    assert (
+        tuple(adapter.metadata()["assembled_shape"])
+        == LAMBDA_KNOWN_DETECTOR_SIZES["9M"]
+    )
+    assert lambda_assembled_shape(offsets) != LAMBDA_KNOWN_DETECTOR_SIZES["9M"]
+
+
+def test_lambda_pad_to_detector_size_unknown_name_raises():
+    with pytest.raises(ValueError, match="Unknown pad_to_detector_size"):
+        LambdaDetectorNexusAdapter.from_uris(
+            "file:///nonexistent_m01.nxs", pad_to_detector_size="not_a_real_detector"
+        )
 
 
 @pytest.mark.asyncio
