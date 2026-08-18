@@ -36,6 +36,11 @@ tiled-all = [
 bl733 = [
   "fabio",
 ]
+desy_p03 = [
+  "fabio",
+  "h5py",
+  "ndindex",
+]
 dev = [
   "flake8",
   "black",

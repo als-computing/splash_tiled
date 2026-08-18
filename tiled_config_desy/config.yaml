@@ -1,0 +1,23 @@
+# Minimal starting config for the DESY image (built from Containerfile.desy).
+# Currently only serves beamline P03 adapters. Deliberately has NO authentication or
+# access_control block yet -- unlike tiled_config/config.yaml (the ALS
+# config, which uses Keycloak OIDC + ESAF-based tags), P03's actual auth
+# requirements haven't been decided. DO NOT deploy this to a
+# publicly-reachable endpoint as-is: every request currently has full
+# read/write access.
+
+file_extensions:
+  cbf: application/x-cbf
+
+
+trees:
+  - path: /
+    tree: catalog
+    args:
+      uri: /app/data/catalog.db
+      readable_storage: [/app/data]
+      writable_storage: /app/data
+      init_if_not_exists: true
+      adapters_by_mimetype:
+        application/x-cbf: splash_tiled.external.desy_p03.adapters.cbf:CBFAdapter
+        multipart/related;type=application/x-hdf5: splash_tiled.external.desy_p03.adapters.lambda_nxs:LambdaDetectorNexusAdapter
