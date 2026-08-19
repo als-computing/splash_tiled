@@ -408,7 +408,10 @@ class LambdaDetectorNexusAdapter:
         """
         Determine:
         - per-module offsets (offset_dim0/offset_dim1) from translation/distance
-        - number of frames (supports 2D or 3D datasets)
+        - number of frames (supports 2D or 3D datasets) -- the min across all
+          modules, since real scans have been observed where one module logs
+          one more frame than the others; using any single module's count
+          could ask a shorter module for a frame index it doesn't have
         - module shape (from data dataset shape)
         - assembled detector extents (from the modules present in this scan
           only -- pass pad_to_detector_size to __init__ if the assembled shape
@@ -422,16 +425,15 @@ class LambdaDetectorNexusAdapter:
             native_dtype = np.dtype(first_data.dtype)
 
             if first_data.ndim == 2:
-                num_frames = 1
                 module_dim0, module_dim1 = map(int, first_data.shape)
             else:
-                num_frames = int(first_data.shape[0])
                 module_dim0, module_dim1 = map(int, first_data.shape[1:])
             flatfield_applied = h5file[self.FLATFIELD_PATH + "_applied"][()]
             mask_applied = h5file[self.MASK_PATH + "_applied"][()]
 
         assembled_dim0 = 0
         assembled_dim1 = 0
+        num_frames: Optional[int] = None
 
         for filepath in self._filepaths:
             with h5py.File(filepath, "r") as h5file:
@@ -456,8 +458,10 @@ class LambdaDetectorNexusAdapter:
                 data_set = h5file[self.DATASET_PATH]
                 if data_set.ndim == 2:
                     dim0, dim1 = data_set.shape
+                    this_num_frames = 1
                 else:
                     dim0, dim1 = data_set.shape[1:]
+                    this_num_frames = int(data_set.shape[0])
 
                 if (int(dim0), int(dim1)) != (module_dim0, module_dim1):
                     warnings.warn(
@@ -465,6 +469,12 @@ class LambdaDetectorNexusAdapter:
                         f"{(module_dim0, module_dim1)} for {filepath}",
                         category=RuntimeWarning,
                     )
+
+                num_frames = (
+                    this_num_frames
+                    if num_frames is None
+                    else min(num_frames, this_num_frames)
+                )
 
             assembled_dim0 = max(assembled_dim0, offset_dim0 + module_dim0)
             assembled_dim1 = max(assembled_dim1, offset_dim1 + module_dim1)

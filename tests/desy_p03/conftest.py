@@ -141,6 +141,7 @@ def make_desy_p03_lambda_scan(tmp_path):
         scan_idx="00001",
         flatfield_applied=1,
         flatfield_factory=None,
+        num_frames_factory=None,
     ):
         offsets = lambda_grid_offsets(num_modules, num_columns)
         module_arrays = [
@@ -153,7 +154,11 @@ def make_desy_p03_lambda_scan(tmp_path):
                 # If the adapter ever placed a module at the wrong offset,
                 # comparing exact values (not just shape) would catch it.
                 data_offset=module_index * 1000,
-                num_frames=num_frames,
+                num_frames=(
+                    num_frames_factory(module_index)
+                    if num_frames_factory
+                    else num_frames
+                ),
                 flatfield_applied=flatfield_applied,
                 flatfield=(
                     flatfield_factory(module_index) if flatfield_factory else None

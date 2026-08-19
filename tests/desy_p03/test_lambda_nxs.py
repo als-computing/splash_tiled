@@ -210,6 +210,44 @@ async def test_lambda_flatfield_applied_when_not_yet_applied(
             )
 
 
+@pytest.mark.asyncio
+async def test_lambda_frame_count_uses_minimum_across_modules(
+    tmp_path, make_desy_p03_lambda_scan
+):
+    """Real P03 scans have been observed where one module logs one more frame
+    than the others (confirmed on real data: a scan with 10 modules at 82
+    frames and one at 83). num_frames must be the minimum across all modules
+    -- using any single module's count (e.g. just the first file) risks
+    asking a shorter module for a frame index it doesn't have."""
+    scan_dir, module_arrays, offsets = make_desy_p03_lambda_scan(
+        num_modules=LAMBDA_2M_NUM_MODULES,
+        num_columns=LAMBDA_2M_NUM_COLUMNS,
+        num_frames=3,
+        # Module index 0 (m01, opened first) has MORE frames than the rest --
+        # the vulnerable ordering: trusting only the first file would set
+        # num_frames=3 and crash reading frame 2 from the other modules.
+        num_frames_factory=lambda module_index: 3 if module_index == 0 else 2,
+    )
+
+    with _tiled_context(tmp_path) as context:
+        client = from_context(context)
+        await register(
+            client,
+            scan_dir,
+            adapters_by_mimetype={LAMBDA_MIMETYPE: LAMBDA_ADAPTER},
+            walkers=[LAMBDA_WALKER],
+        )
+
+        metadata = client[SCAN_KEY].metadata
+        assert metadata["num_frames"] == 2
+
+        for frame_index in range(2):
+            frame = client[SCAN_KEY].read(frame_index)
+            np.testing.assert_array_equal(
+                frame, _expected_frame(module_arrays, offsets, frame_index)
+            )
+
+
 def _present_uris_and_arrays(scan_dir, module_arrays, offsets, dropped_index):
     """Drop one module (as if it had been switched off -- no file written for
     it at all) and return (present_uris, present_arrays, present_offsets)."""
