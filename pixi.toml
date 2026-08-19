@@ -7,6 +7,7 @@ platforms = ["linux-64", "osx-64", "osx-arm64", "linux-aarch64"]
 [environments]
 default = { features = ["bl733"] }
 dev = { features = ["bl733", "dev"] }
+desy-p03 = { features = ["desy_p03", "dev"] }
 
 [dependencies]
 python = "3.13.*"
@@ -19,6 +20,9 @@ apscheduler = "*"
 zarr = "*"
 numpy = "*"
 pandas = "*"
+
+[pypi-dependencies]
+splash_tiled = { path = ".", editable = true }
 
 [feature.dev.dependencies]
 mypy = "*"
@@ -35,10 +39,16 @@ pytest-asyncio = "*"
 [feature.bl733.dependencies]
 fabio = "*"
 
+[feature.desy_p03.dependencies]
+fabio = "*"
+h5py = "*"
+ndindex = "*"
+
 [tasks]
 test = "pytest --cov=splash_tiled --cov-report=term-missing"
 test_user_office = "pytest -m user_office"
 test_integration = "pytest tests/test_user_office_integration.py -v"
 lint = "flake8 src tests && black --check src tests && isort --check-only src tests && mypy src"
 format = "black src tests && isort src tests"
+precommit = "pre-commit run --all-files"
 access = "access"
