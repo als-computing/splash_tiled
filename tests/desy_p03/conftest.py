@@ -30,31 +30,19 @@ def desy_p03_cbf_path(tmp_path, scan_name="scan_name"):
     return cbf_file
 
 
-# Modeled on the real HDF5 layout produced by Lambda detectors at DESY
-# beamline P03: entry/instrument/detector/{data,description,translation/distance,
+# Models the real HDF5 layout of Lambda detectors at DESY beamline P03:
+# entry/instrument/detector/{data,description,translation/distance,
 # flatfield_applied,pixel_mask_applied}, data shaped (num_frames, module_dim0,
-# module_dim1). Real P03 data (surveyed across ~2500 scans) only ever has this
-# 3D shape -- even single-frame calibration scans store shape (1, dim0, dim1),
-# never a bare 2D array -- so that's the only shape modeled here.
+# module_dim1) -- always 3D on real files, even for a single frame.
 #
-# Two real detector configurations were found in that survey, and real
-# translation/distance vectors were read back from one scan of each to get
-# real module geometry (not guessed):
-#   - Lambda 2M: 3 modules, GaAs sensor, stacked in a single column (only
-#     offset_dim0 varies between modules). Real y-gap between modules was
-#     ~131-134 px (module height 516 px) -- i.e. the gap is roughly a
-#     quarter of a module, not a token 1px seam.
-#   - Lambda 9M: 11 modules, Si sensor, arranged in a 3-column grid (mostly
-#     4 rows, with one corner module physically absent). Real gaps are
-#     anisotropic: ~27-32 px between columns (module width 1556 px) but
-#     ~137-145 px between rows (module height 516 px) -- rows are spaced
-#     much further apart than columns.
-# Module dims here are shrunk for fast tests; ROW_GAP is kept larger than
-# COL_GAP to preserve that real anisotropy, proportionally scaled down.
+# Two real detector units: Lambda 2M (3 modules, single column) and Lambda 9M
+# (11 modules, 3-column grid, one corner absent). Real gaps are anisotropic
+# (rows spaced further apart than columns); ROW_GAP > COL_GAP below preserves
+# that, scaled down for fast tests.
 LAMBDA_MODULE_DIM0 = 3  # module height (rows)
 LAMBDA_MODULE_DIM1 = 4  # module width (columns)
-LAMBDA_ROW_GAP = 2  # between vertically stacked modules (large, like real ~140px)
-LAMBDA_COL_GAP = 1  # between side-by-side modules (small, like real ~30px)
+LAMBDA_ROW_GAP = 2  # between vertically stacked modules
+LAMBDA_COL_GAP = 1  # between side-by-side modules
 
 LAMBDA_9M_NUM_MODULES = 11
 LAMBDA_9M_NUM_COLUMNS = 3
@@ -93,11 +81,11 @@ def _write_lambda_module(
 ):
     """Write one synthetic Lambda module NeXus file. Returns its (frames, dim0, dim1) array.
 
-    Real Lambda module files (surveyed across ~54k files on disk) always
-    have a `flatfield` dataset (shape (1, dim0, dim1)) regardless of
-    flatfield_applied -- so this always writes one; pass `flatfield` (a 2D
-    (dim0, dim1) array) to control its values, e.g. for a test where
-    flatfield_applied=0 and the adapter is expected to read and apply it.
+    Lambda module files always have a `flatfield` dataset (shape (1, dim0,
+    dim1)) regardless of flatfield_applied -- so this always writes one;
+    pass `flatfield` (a 2D (dim0, dim1) array) to control its values, e.g.
+    for a test where flatfield_applied=0 and the adapter is expected to
+    read and apply it.
     """
     data = (
         np.arange(
@@ -128,8 +116,8 @@ def make_desy_p03_lambda_scan(tmp_path):
     """Factory fixture: write a synthetic multi-module Lambda scan to tmp_path.
 
     Returns (dir, module_arrays, offsets). Use num_frames=0 to model a real
-    edge case found at P03: a calibration scan whose modules recorded no
-    frames at all -- the walker is expected to skip registering it.
+    edge case where a scan failed and modules recorded no frames at all --
+    the walker is expected to skip registering it.
     """
 
     def _make(

@@ -233,7 +233,9 @@ class LambdaDetectorNexusAdapter:
     MASK_PATH = "entry/instrument/detector/pixel_mask"
     TRANSLATION_PATH = "entry/instrument/detector/translation/distance"
 
-    # Magic number from old code, used to identify bad pixels in the pixel mask
+    # pixel_mask carries several distinct flags (e.g. bit 31 / 0x80000000 / 2147483648
+    # small codes like 4/6/8); old code used this threshold to distinguish
+    # masked from non-masked pixels. Meaning of the individual flags is unknown
     MASK_BAD_THRESHOLD = np.uint32(2147483600)
 
     def __init__(
