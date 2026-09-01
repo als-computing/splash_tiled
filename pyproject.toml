@@ -33,9 +33,11 @@ dependencies = [
 tiled-all = [
   "tiled[all]>=0.2.8",
 ]
+
 bl733 = [
   "fabio",
 ]
+
 dev = [
   "flake8",
   "black",
@@ -45,7 +47,7 @@ dev = [
   "pytest-cov",
   "pytest-asyncio",
   "fabio",
-  "tiled[server]>=0.2.8"
+  "tiled[server]",
 ]
 
 [project.urls]

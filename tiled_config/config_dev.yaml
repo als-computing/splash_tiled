@@ -1,0 +1,50 @@
+database:
+  uri: sqlite:////home/dmcreynolds/dev/splash_tiled/data/auth.db
+
+# links_database:
+#   uri: sqlite:////home/dmcreynolds/dev/splash_tiled/data/graph.db
+
+authentication:
+    secret_keys:
+    - secret
+    providers:
+    - provider: dictionary
+      authenticator: tiled.authenticators:DictionaryAuthenticator
+      args:
+        users_to_passwords:
+          alice: pass
+          bob: pass
+          0000-0002-1539-0297: pass
+        confirmation_message: "You have logged in as {id}."
+
+
+    tiled_admins:
+      - provider: dictionary
+        id: bob
+
+
+access_control:
+  access_policy: "tiled.access_control.access_policies:InheritedTagAccessPolicy"
+  args:
+    provider: "dictionary"
+    scopes:
+    - "read:metadata"
+    - "read:data"
+    - "write:metadata"
+    - "write:data"
+    - "delete:revision"
+    - "delete:node"
+    - "create:node"
+    - "register"
+    tags_db:
+      uri: /home/dmcreynolds/dev/splash_tiled/tags/compiled_tags.db
+    access_tags_parser: "tiled.access_control.access_tags:AccessTagsParser"
+
+trees:
+  - path: /
+    tree: catalog
+    args:
+      uri: /home/dmcreynolds/dev/splash_tiled/data/catalog.db
+      readable_storage: [/home/dmcreynolds/data]
+      writable_storage: /home/dmcreynolds/data
+      init_if_not_exists: true

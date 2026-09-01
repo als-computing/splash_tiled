@@ -30,11 +30,13 @@ def get_default_output_sqlite_path() -> Path:
 
 
 def get_default_tag_definitions_path() -> Path:
-    return Path(__file__).resolve().parent / "tag_definitions_stub.yaml"
+    return Path(__file__).resolve().parents[3] / "tags" / "tag_definitions_stub.yaml"
 
 
 def get_default_generated_tag_definitions_path() -> Path:
-    return Path(__file__).resolve().parents[3] / "tag_definitions.generated.yml"
+    return (
+        Path(__file__).resolve().parents[3] / "tags" / "tag_definitions.generated.yml"
+    )
 
 
 def load_esaf_groups(esaf_db_path: Path) -> dict[str, list[str]]:
