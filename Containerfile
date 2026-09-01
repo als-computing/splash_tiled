@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
 # Pinned to a commit (not the branch tip) so Docker/BuildKit layer caching
 # (e.g. GitHub Actions' type=gha cache) can't silently reuse a stale clone
 # from before upstream `inherited_access_control` moved forward.
-ARG TILED_INHERITED_ACCESS_COMMIT=a34248d24eac6f316d8ad72e6e80e0961ddfc9dd
+ARG TILED_INHERITED_ACCESS_COMMIT=b190747be10f6ec5f1532168f833586e101ea150
 RUN git clone https://github.com/als-computing/tiled.git /tmp/tiled \
     && cd /tmp/tiled \
     && git checkout ${TILED_INHERITED_ACCESS_COMMIT}
