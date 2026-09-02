@@ -7,6 +7,8 @@ platforms = ["linux-64", "osx-64", "osx-arm64", "linux-aarch64"]
 [environments]
 default = { features = ["bl733"] }
 dev = { features = ["bl733", "dev"] }
+tiled = { features = ["tiled_client"] }
+
 
 [dependencies]
 python = "3.13.*"
@@ -19,6 +21,12 @@ apscheduler = "*"
 zarr = "*"
 numpy = "*"
 pandas = "*"
+
+[feature.tiled_client.dependencies]
+ipython = "*"
+
+[feature.tiled_client.pypi-dependencies]
+tiled = { version = "==0.2.17", extras = ["minimal-client"] }
 
 [feature.dev.dependencies]
 mypy = "*"
