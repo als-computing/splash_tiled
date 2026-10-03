@@ -36,6 +36,9 @@ tiled-all = [
 bl733 = [
   "fabio",
 ]
+bl11012 = [
+  "astropy>=6",
+]
 dev = [
   "flake8",
   "black",
@@ -45,6 +48,7 @@ dev = [
   "pytest-cov",
   "pytest-asyncio",
   "fabio",
+  "astropy>=6",
   "tiled[server]>=0.2.8"
 ]
 
