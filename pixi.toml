@@ -5,8 +5,8 @@ channels = ["conda-forge"]
 platforms = ["linux-64", "osx-64", "osx-arm64", "linux-aarch64"]
 
 [environments]
-default = { features = ["bl733"] }
-dev = { features = ["bl733", "dev"] }
+default = { features = ["bl733", "bl11012"] }
+dev = { features = ["bl733", "bl11012", "dev"] }
 
 [dependencies]
 python = "3.13.*"
@@ -34,6 +34,9 @@ pytest-asyncio = "*"
 
 [feature.bl733.dependencies]
 fabio = "*"
+
+[feature.bl11012.dependencies]
+astropy = "*"
 
 [tasks]
 test = "pytest --cov=splash_tiled --cov-report=term-missing"

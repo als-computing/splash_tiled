@@ -189,6 +189,21 @@ The application can be configured through environment variables:
 - `TILED_SERVER_ENABLE_ORIGINS`: Configure CORS origins
 - `PYTHONPATH`: Python module search path
 
+## Beamline Adapters
+
+Beamline-specific Tiled adapters live in `src/splash_tiled/bl<NNN>/adapters/`. Each beamline
+has a pip extra for its file-format dependencies, and its mimetypes are mapped in
+`tiled_config/config.yaml`.
+
+| Beamline | Extra | File types | Adapter |
+|---|---|---|---|
+| 7.3.3 (SAXS/WAXS) | `bl733` | `.edf`, `.gb` | `EDFAdapter`, `GeneralBinaryPilatus2MAdapter` |
+| 11.0.1.2 (RSoXS) | `bl11012` | `.fits` | `FITSAdapter` |
+
+```bash
+pip install -e ".[bl733,bl11012]"
+```
+
 ## ESAF Sync Script
 
 The repository includes a small CLI for loading ESAFs into SQLite.

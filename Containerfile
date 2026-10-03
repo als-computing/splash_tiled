@@ -10,5 +10,5 @@ ENV PYTHONPATH=/app/src:/tiled_deploy/config
 
 COPY --chown=app:app pyproject.toml README.md ./
 COPY --chown=app:app src/ ./src/
-RUN uv pip install --python /app/bin/python --no-cache ".[bl733]"
+RUN uv pip install --python /app/bin/python --no-cache ".[bl733,bl11012]"
 COPY --chown=app:app scripts/ ./scripts/
