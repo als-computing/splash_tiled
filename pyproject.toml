@@ -27,6 +27,7 @@ dependencies = [
   "typer>=0.12",
   "APScheduler>=3.10",
   "tiled[client]>=0.2.8",
+  "requests",
 ]
 
 [project.optional-dependencies]
